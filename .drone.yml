@@ -63,7 +63,6 @@ pipeline:
     when:
       event: tag
 
-
   tag_latest_event_bus_rabbit_mq:
     image: microsoft/aspnetcore-build
     commands:
