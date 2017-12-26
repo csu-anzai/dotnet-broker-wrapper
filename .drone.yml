@@ -11,7 +11,7 @@ pipeline:
       - cd EventBus
       - dotnet build
       - dotnet pack --configuration Release /p:PackageVersion=$(head -n 1 ../.version)
-      - cd EventBus/bin/Release
+      - cd bin/Release
       - dotnet nuget push *.nupkg -s http://npmdo.asseco.rs:4874 -k $NUGET_KEY
     secrets: [ NUGET_KEY ]
 
@@ -21,7 +21,7 @@ pipeline:
       - cd EventBusActiveMQ
       - dotnet build
       - dotnet pack --configuration Release /p:PackageVersion=$(head -n 1 ../.version)
-      - cd EventBusActiveMQ/bin/Release
+      - cd bin/Release
       - dotnet nuget push *.nupkg -s http://npmdo.asseco.rs:4874 -k $NUGET_KEY
     secrets: [ NUGET_KEY ]
 
@@ -31,7 +31,7 @@ pipeline:
       - cd EventBusRabbitMQ
       - dotnet build
       - dotnet pack --configuration Release /p:PackageVersion=$(head -n 1 ../.version)
-      - cd EventBusRabbitMQ/bin/Release
+      - cd bin/Release
       - dotnet nuget push *.nupkg -s http://npmdo.asseco.rs:4874 -k $NUGET_KEY
     secrets: [ NUGET_KEY ]
 
@@ -41,7 +41,7 @@ pipeline:
       - cd EventBusServiceBus
       - dotnet build
       - dotnet pack --configuration Release /p:PackageVersion=$(head -n 1 ../.version)
-      - cd EventBusServiceBus/bin/Release
+      - cd bin/Release
       - dotnet nuget push *.nupkg -s http://npmdo.asseco.rs:4874 -k $NUGET_KEY
     secrets: [ NUGET_KEY ]
 
