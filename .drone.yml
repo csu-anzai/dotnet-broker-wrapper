@@ -89,8 +89,8 @@ pipeline:
     image: bravissimolabs/alpine-git
     commands:
       - git checkout -b master
-      - git config --global user.email "$GIT_EMAIL"
       - git config --global user.name "$GIT_NAME"
+      - git config --global user.email "$GIT_EMAIL"
       - git add .
       - git commit -m "Drone automated commmit build - $DRONE_BUILD_NUMBER [CI SKIP]"
       - git pull origin master
