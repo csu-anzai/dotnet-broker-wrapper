@@ -1,15 +1,4 @@
 pipeline:
-  build_currency_conversion:
-    image: microsoft/aspnetcore-build
-    commands:
-      - cd AssecoCurrencyConversion
-      - dotnet build
-
-  test_currency_conversion:
-    image: microsoft/aspnetcore-build
-    commands:
-      - cd AssecoCurrencyConversion/AssecoCurrencyConversionTest
-      - dotnet test
 
   get_tags:
     image: dtr.asseco.rs/asseco/image-tagger
