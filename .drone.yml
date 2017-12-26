@@ -1,0 +1,131 @@
+pipeline:
+  build_currency_conversion:
+    image: microsoft/aspnetcore-build
+    commands:
+      - cd AssecoCurrencyConversion
+      - dotnet build
+
+  test_currency_conversion:
+    image: microsoft/aspnetcore-build
+    commands:
+      - cd AssecoCurrencyConversion/AssecoCurrencyConversionTest
+      - dotnet test
+
+  get_tags:
+    image: dtr.asseco.rs/asseco/image-tagger
+    run: plugin
+    secrets: [GITHUB_TOKEN]
+
+  build_event_bus:
+    image: microsoft/aspnetcore-build
+    commands:
+      - cd EventBus
+      - dotnet build
+      - dotnet pack --configuration Release /p:PackageVersion=$(head -n 1 ../.version)
+      - cd EventBus/bin/Release
+      - dotnet nuget push *.nupkg -s http://npmdo.asseco.rs:4874 -k $NUGET_KEY
+    secrets: [ NUGET_KEY ]
+
+  build_event_bus_active_mq:
+    image: microsoft/aspnetcore-build
+    commands:
+      - cd EventBusActiveMQ
+      - dotnet build
+      - dotnet pack --configuration Release /p:PackageVersion=$(head -n 1 ../.version)
+      - cd EventBusActiveMQ/bin/Release
+      - dotnet nuget push *.nupkg -s http://npmdo.asseco.rs:4874 -k $NUGET_KEY
+    secrets: [ NUGET_KEY ]
+
+  build_event_bus_rabbit_mq:
+    image: microsoft/aspnetcore-build
+    commands:
+      - cd EventBusRabbitMQ
+      - dotnet build
+      - dotnet pack --configuration Release /p:PackageVersion=$(head -n 1 ../.version)
+      - cd EventBusRabbitMQ/bin/Release
+      - dotnet nuget push *.nupkg -s http://npmdo.asseco.rs:4874 -k $NUGET_KEY
+    secrets: [ NUGET_KEY ]
+
+  build_event_bus_service_bus:
+    image: microsoft/aspnetcore-build
+    commands:
+      - cd EventBusServiceBus
+      - dotnet build
+      - dotnet pack --configuration Release /p:PackageVersion=$(head -n 1 ../.version)
+      - cd EventBusServiceBus/bin/Release
+      - dotnet nuget push *.nupkg -s http://npmdo.asseco.rs:4874 -k $NUGET_KEY
+    secrets: [ NUGET_KEY ]
+
+  tag_latest_event_bus:
+    image: microsoft/aspnetcore-build
+    commands:
+      - cd EventBus
+      - dotnet restore
+      - dotnet setversion $(head -n 1 ../.version)
+      - cd ../
+      - rm -rf .version .tags
+    when:
+      event: tag
+
+  tag_latest_event_bus_active_mq:
+    image: microsoft/aspnetcore-build
+    commands:
+      - cd EventBusActiveMQ
+      - dotnet restore
+      - dotnet setversion $(head -n 1 ../.version)
+      - cd ../
+      - rm -rf .version .tags
+    when:
+      event: tag
+
+
+  tag_latest_event_bus_rabbit_mq:
+    image: microsoft/aspnetcore-build
+    commands:
+      - cd EventBusRabbitMQ
+      - dotnet restore
+      - dotnet setversion $(head -n 1 ../.version)
+      - cd ../
+      - rm -rf .version .tags
+    when:
+      event: tag
+
+
+  tag_latest_event_bus_service_bus:
+    image: microsoft/aspnetcore-build
+    commands:
+      - cd EventBusServiceBus
+      - dotnet restore
+      - dotnet setversion $(head -n 1 ../.version)
+      - cd ../
+      - rm -rf .version .tags
+    when:
+      event: tag
+
+  git_push:
+    image: bravissimolabs/alpine-git
+    commands:
+      - git checkout -b master
+      - git config --global user.email "$GIT_EMAIL"
+      - git config --global user.name "$GIT_NAME"
+      - git add .
+      - git commit -m "Drone automated commmit build - $DRONE_BUILD_NUMBER [CI SKIP]"
+      - git pull origin master
+      - git push origin master
+    secrets: [GIT_NAME, GIT_EMAIL]
+    when:
+      event: tag
+
+  slack:
+    image: plugins/slack
+    secrets: [ slack_webhook ]
+    channel: drone
+    username: drone
+    when:
+      status: [ failure ]
+    template: >
+      {{#success build.status}}
+        Repo {{repo.name}} build {{build.number}} succeeded. Good job {{build.author}}. Build time: {{since build.started}}
+      {{else}}
+        Repo {{repo.name}} build {{build.number}} failed. {{build.author}} Fix me!.
+      {{/success}}
