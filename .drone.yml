@@ -93,7 +93,7 @@ pipeline:
       - git add .
       - git commit -m "Drone automated commmit build - $DRONE_BUILD_NUMBER [CI SKIP]"
       - git pull origin master
-      - git remote set-url origin https://"GITHUB_NAME":"$GITHUB_TOKEN"@github.com/asseco-see/dotnet-currency-converter.git
+      - git remote set-url origin https://"GITHUB_NAME":"$GITHUB_TOKEN"@github.com/asseco-see/dotnet-broker-wrapper.git
       - git push myorigin master
     secrets: [GIT_NAME, GIT_EMAIL, GITHUB_TOKEN, GITHUB_NAME]
     when:
