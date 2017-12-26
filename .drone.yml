@@ -93,6 +93,7 @@ pipeline:
       - git add .
       - git commit -m "Drone automated commmit build - $DRONE_BUILD_NUMBER [CI SKIP]"
       - git pull origin master
+      - git remote origin add https://github.com/asseco-see/dotnet-broker-wrapper.git
       - git push origin master
     secrets: [GIT_NAME, GIT_EMAIL]
     when:
