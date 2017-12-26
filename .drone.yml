@@ -81,7 +81,7 @@ pipeline:
       - dotnet restore
       - dotnet setversion $(head -n 1 ../.version)
       - cd ../
-      - rm -rf .version .tags .maven    
+      - rm -rf .version .tags .maven
     when:
       event: tag
 
