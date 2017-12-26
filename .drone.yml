@@ -51,8 +51,6 @@ pipeline:
       - cd EventBus
       - dotnet restore
       - dotnet setversion $(head -n 1 ../.version)
-      - cd ../
-      - rm -rf .version .tags
     when:
       event: tag
 
@@ -62,8 +60,6 @@ pipeline:
       - cd EventBusActiveMQ
       - dotnet restore
       - dotnet setversion $(head -n 1 ../.version)
-      - cd ../
-      - rm -rf .version .tags
     when:
       event: tag
 
@@ -74,8 +70,6 @@ pipeline:
       - cd EventBusRabbitMQ
       - dotnet restore
       - dotnet setversion $(head -n 1 ../.version)
-      - cd ../
-      - rm -rf .version .tags
     when:
       event: tag
 
@@ -86,14 +80,14 @@ pipeline:
       - cd EventBusServiceBus
       - dotnet restore
       - dotnet setversion $(head -n 1 ../.version)
-      - cd ../
-      - rm -rf .version .tags
     when:
       event: tag
 
   git_push:
     image: bravissimolabs/alpine-git
     commands:
+      - cd ../
+      - rm -rf .version .tags .maven
       - git checkout -b master
       - git config --global user.email "$GIT_EMAIL"
       - git config --global user.name "$GIT_NAME"
