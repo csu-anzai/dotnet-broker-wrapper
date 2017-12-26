@@ -1,19 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <TargetFramework>netcoreapp2.0</TargetFramework>
     <AssemblyName>EventBusActiveMQ</AssemblyName>
     <RootNamespace>EventBusActiveMQ</RootNamespace>
+    <Version>0.1.0</Version>
   </PropertyGroup>
-
   <ItemGroup>
     <PackageReference Include="Apache.NMS.ActiveMQ" Version="1.7.2" />
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\EventBus\EventBus.csproj" />
   </ItemGroup>
-
   <ItemGroup>
     <Reference Include="activemq-netcore">
       <HintPath>References\activemq-netcore.dll</HintPath>
@@ -27,5 +24,4 @@
   <ItemGroup>
     <DotNetCliToolReference Include="dotnet-setversion" Version="1.0.2" />
   </ItemGroup>
-
 </Project>
