@@ -7,10 +7,13 @@ using Apache.NMS;
 using Apache.NMS.ActiveMQ;
 using Apache.NMS.ActiveMQ.Commands;
 using System.Text;
+using System.Threading.Tasks;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Asseco.EventBusActiveMQ
 {
-    public delegate void MessageReceivedDelegate(ITextMessage message);
+    public delegate void MessageReceivedDelegate(IntegrationEvent message, string topic);
 
     public class EventBusActiveMQ : IEventBus
     {
@@ -70,15 +73,20 @@ namespace Asseco.EventBusActiveMQ
             }
         }
 
-        public void Subscribe<T, TH>()
+        public void Subscribe<T>(string eventName, IIntegrationEventHandler<T> integrationEventHandler)
             where T : IntegrationEvent
-            where TH : IIntegrationEventHandler<T>
         {
             try
             {
-                var eventName = this.memory.GetEventKey<T>();
+                this.OnMessageReceived += (async (msg, topic) =>
+                {
+                    if (topic.Equals(eventName))
+                    {
+                        await integrationEventHandler.Handle((T)msg);
+                    }
+                });
                 this.DoInternalSubscription(eventName);
-                this.memory.AddSubscription<T, TH>();
+                this.memory.AddSubscription<T>(eventName, integrationEventHandler);
             }
             catch (EventBusException ex)
             {
@@ -86,16 +94,19 @@ namespace Asseco.EventBusActiveMQ
             }
         }
 
-        public void SubscribeDynamic(string eventName) {
-            this.SubscribeDynamic<IDynamicIntegrationEventHandler>(eventName);
-        }
-
-        public void SubscribeDynamic<TH>(string eventName) where TH : IDynamicIntegrationEventHandler
+        public void SubscribeDynamic(string eventName, IIntegrationEventHandler<dynamic> handler)
         {
             try
             {
+                this.OnMessageReceived += (async (msg, topic) =>
+                {
+                    if (topic.Equals(eventName))
+                    {
+                        await handler.Handle(msg);
+                    }
+                });
                 this.DoInternalSubscription(eventName);
-                this.memory.AddDynamicSubscription<TH>(eventName);
+                this.memory.AddDynamicSubscription(eventName, handler);
             }
             catch (NMSException ex)
             {
@@ -104,30 +115,31 @@ namespace Asseco.EventBusActiveMQ
 
         }
 
-        public void Unsubscribe<T, TH>()
-            where T : IntegrationEvent
-            where TH : IIntegrationEventHandler<T>
+        public void Unsubscribe<T>(string eventName, IIntegrationEventHandler<T> integrationEventHandler) where T : IntegrationEvent
         {
-            this.memory.RemoveSubscription<T, TH>();
+            this.memory.RemoveSubscription<T>(integrationEventHandler);
         }
 
-        public void UnsubscribeDynamic<TH>(string eventName) where TH : IDynamicIntegrationEventHandler
+        public void UnsubscribeDynamic(string eventName, IIntegrationEventHandler<dynamic> handler)
         {
-            this.memory.RemoveDynamicSubscription<TH>(eventName);
+            this.memory.RemoveDynamicSubscription(eventName, handler);
         }
 
         private void DoInternalSubscription(String eventKey)
         {
-            try
-            {
-                ActiveMQTopic topic = new ActiveMQTopic(eventKey);
-                IMessageConsumer consumer = this.session.CreateDurableConsumer(topic, "consumer-name", "2 > 1", false);
-                consumer.Listener += new MessageListener(ReceiveMessage);
-            }
-            catch (NMSException ex)
-            {
-                throw new NMSException("Could not subscribe", ex);
-            }
+            //var containsKey = memory.HasSubscriptionsForEvent(eventKey);
+            //if (!containsKey) {
+                try
+                {
+                    ActiveMQTopic topic = new ActiveMQTopic(eventKey);
+                    IMessageConsumer consumer = this.session.CreateConsumer(topic);
+                    consumer.Listener += new MessageListener(ReceiveMessage);
+                }
+                catch (NMSException ex)
+                {
+                    throw new NMSException("Could not subscribe", ex);
+                }
+            //}
         }
 
         public void ReceiveMessage(IMessage msg)
@@ -149,19 +161,14 @@ namespace Asseco.EventBusActiveMQ
                     throw new NMSException("Message could not be parsed ");
                 }
 
-                ActiveMQTextMessage activeMqMessage = new ActiveMQTextMessage()
+                MessageEvent messageEvent = new MessageEvent(msg.Properties["destination"].ToString(), message, msg.NMSMessageId, msg.NMSTimestamp);
+                foreach (String key in msg.Properties.Keys)
                 {
-                    Text = message,
-                    NMSTimestamp = msg.NMSTimestamp,
-                    NMSMessageId = msg.NMSMessageId
-                };
-
-                foreach (String key in msg.Properties.Keys) {
-                    activeMqMessage.SetObjectProperty(key, msg.Properties[key]);
+                    messageEvent.setObjectProperty(key, msg.Properties[key]);
                 }
-
-                this.OnMessageReceived(activeMqMessage);
+                this.OnMessageReceived(messageEvent, messageEvent.getEventType());
             }
         }
+
     }
 }

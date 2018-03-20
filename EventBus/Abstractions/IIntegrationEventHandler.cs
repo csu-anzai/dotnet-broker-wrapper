@@ -3,13 +3,9 @@ using System.Threading.Tasks;
 
 namespace Asseco.EventBus.Abstractions
 {
-    public interface IIntegrationEventHandler<in TIntegrationEvent> : IIntegrationEventHandler 
-        where TIntegrationEvent: IntegrationEvent
+    public interface IIntegrationEventHandler<T>
     {
-        Task Handle(TIntegrationEvent @event);
+        Task Handle(T @event);
     }
 
-    public interface IIntegrationEventHandler
-    {
-    }
 }

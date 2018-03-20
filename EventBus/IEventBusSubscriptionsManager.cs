@@ -10,19 +10,12 @@ namespace Asseco.EventBus
     {
         bool IsEmpty { get; }
         event EventHandler<string> OnEventRemoved;
-        void AddDynamicSubscription<TH>(string eventName)
-           where TH : IDynamicIntegrationEventHandler;
-
-        void AddSubscription<T, TH>()
-           where T : IntegrationEvent
-           where TH : IIntegrationEventHandler<T>;
-
-        void RemoveSubscription<T, TH>()
-             where TH : IIntegrationEventHandler<T>
+        void AddDynamicSubscription(string eventName, IIntegrationEventHandler<dynamic> handler);
+        void AddSubscription<T>(string eventName, IIntegrationEventHandler<T> integrationEventHandler)
+           where T : IntegrationEvent;
+        void RemoveSubscription<T>(IIntegrationEventHandler<T> integrationEventHandler)
              where T : IntegrationEvent;
-        void RemoveDynamicSubscription<TH>(string eventName)
-            where TH : IDynamicIntegrationEventHandler;
-
+        void RemoveDynamicSubscription(string eventName, IIntegrationEventHandler<dynamic> handler);
         bool HasSubscriptionsForEvent<T>() where T : IntegrationEvent;
         bool HasSubscriptionsForEvent(string eventName);
         Type GetEventTypeByName(string eventName);

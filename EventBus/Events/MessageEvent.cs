@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 namespace Asseco.EventBus.Events
 {
-    public class MessageEvent : IntegrationEvent, Abstractions.IIntegrationEventHandler 
+    public class MessageEvent : IntegrationEvent 
     {
         private String text;
         private String eventType;

@@ -32,7 +32,7 @@ EventBusActiveMQ bus = new EventBusActiveMQ(uri, username, password);
 ## Creating ActiveMQ Topic Event Publisher (Producer)
 ```
    Uri uri = new Uri("failover:tcp://localhost:61616");
-   EventBusActiveMQ bus = new EventBusActiveMQ(uri, "your-username", "your-password");
+   IEventBus bus = new EventBusActiveMQ(uri, "your-username", "your-password");
    
    MessageEvent messageEvent = new MessageEvent("topic-name", "This is a text message!");
    messageEvent.setStringProperty("message-name", "exampleMessage");
@@ -44,17 +44,24 @@ EventBusActiveMQ bus = new EventBusActiveMQ(uri, username, password);
 ## Creating ActiveMQ Topic Listener (Consumer)
 ```
    Uri uri = new Uri("failover:tcp://localhost:61616");
-   EventBusActiveMQ bus = new EventBusActiveMQ(uri, "your-username", "your-password");
+   IEventBus bus = new EventBusActiveMQ(uri, "your-username", "your-password");
    
-   bus.SubscribeDynamic("topic-name");
-   bus.OnMessageReceived += (msg =>
-   {
-       Console.WriteLine("Message received: " + msg.Text);
-       foreach (String key in msg.Properties.Keys)
-       {
-           Console.WriteLine("Property " + key + ": " + msg.Properties[key]);
-       }
-   });
+   bus.Subscribe("topic-name", new MessageEventHandler());
+```
+where MessageEventHandler is implementation of IIntegrationEventHandler, like this:
+```
+public class MessageEventHandler : IIntegrationEventHandler<MessageEvent>
+{
+    Task IIntegrationEventHandler<MessageEvent>.Handle(MessageEvent eventData)
+    {
+        Console.WriteLine("Message received " + eventData.getText());
+        foreach (String key in eventData.getProperties().Keys)
+        {
+            Console.WriteLine(key + " : " + eventData.getProperties()[key]);
+        }
+        return Task.CompletedTask;
+    }
+}
 ```
 
 Both listener and publisher must have an open connection in order to work. Same connection can  be used for receiving and sending events (messages) to message broker.

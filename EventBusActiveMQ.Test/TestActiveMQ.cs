@@ -1,13 +1,12 @@
+using System;
 using Xunit;
-using Xunit.Extensions;
 using Xunit.Abstractions;
 using Asseco.EventBusActiveMQ;
-using System;
 using Asseco.EventBus.Events;
-using System.Threading;
 using System.Diagnostics;
+using Asseco.EventBus.Abstractions;
 
-namespace EventBusAMQPTest
+namespace EventBusActiveMQTest
 {
     public class TestActiveMQ
     {
@@ -22,20 +21,14 @@ namespace EventBusAMQPTest
         public void PubSub()
         {
             Uri uri = new Uri("activemq:tcp://localhost:61616");
-            EventBusActiveMQ bus = new EventBusActiveMQ(uri, "admin", "admin");
-            bus.SubscribeDynamic("notifications");
-            bus.OnMessageReceived += (msg =>
-            {
-                Debug.WriteLine("Message received " + msg.Text);
-                foreach (String key in msg.Properties.Keys)
-                {
-                    Debug.WriteLine(key + " : " + msg.Properties[key]);
-                }
-            });
+            IEventBus bus = new EventBusActiveMQ(uri, "admin", "admin");
+            bus.Subscribe("notifications", new MessageEventHandler());
+            Debug.WriteLine("Subscribed.");
             MessageEvent messageEvent = new MessageEvent("notifications", "This is a text of the message");
             messageEvent.setStringProperty("name", "John Smith");
             bus.Publish(messageEvent);
-            //Thread.Sleep(2000);
+            Debug.WriteLine("Message sent...");
+            //System.Threading.Thread.Sleep(5000);
         }
     }
 }

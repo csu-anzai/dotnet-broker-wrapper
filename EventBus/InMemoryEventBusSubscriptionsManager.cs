@@ -24,18 +24,14 @@ namespace Asseco.EventBus
         public bool IsEmpty => !_handlers.Keys.Any();
         public void Clear() => _handlers.Clear();
 
-        public void AddDynamicSubscription<TH>(string eventName)
-            where TH : IDynamicIntegrationEventHandler
+        public void AddDynamicSubscription(string eventName, IIntegrationEventHandler<dynamic> handler)
         {
-            DoAddSubscription(typeof(TH), eventName, isDynamic: true);
+            DoAddSubscription(handler.GetType(), eventName, isDynamic: true);
         }
 
-        public void AddSubscription<T, TH>()
-            where T : IntegrationEvent
-            where TH : IIntegrationEventHandler<T>
+        public void AddSubscription<T>(string eventName, IIntegrationEventHandler<T> integrationEventHandler) where T : IntegrationEvent
         {
-            var eventName = GetEventKey<T>();
-            DoAddSubscription(typeof(TH), eventName, isDynamic: false);
+            DoAddSubscription(typeof(T), eventName, isDynamic: false);
             _eventTypes.Add(typeof(T));
         }
 
@@ -63,20 +59,18 @@ namespace Asseco.EventBus
         }
 
 
-        public void RemoveDynamicSubscription<TH>(string eventName)
-            where TH : IDynamicIntegrationEventHandler
+        public void RemoveDynamicSubscription(string eventName, IIntegrationEventHandler<dynamic> handler)
         {
-            var handlerToRemove = FindDynamicSubscriptionToRemove<TH>(eventName);
+            var handlerToRemove = DoFindSubscriptionToRemove(eventName, handler.GetType());
             DoRemoveHandler(eventName, handlerToRemove);
         }
 
 
-        public void RemoveSubscription<T, TH>()
-            where TH : IIntegrationEventHandler<T>
+        public void RemoveSubscription<T>(IIntegrationEventHandler<T> integrationEventHandler)
             where T : IntegrationEvent
         {
-            var handlerToRemove = FindSubscriptionToRemove<T, TH>();
             var eventName = GetEventKey<T>();
+            var handlerToRemove = DoFindSubscriptionToRemove(eventName, integrationEventHandler.GetType());
             DoRemoveHandler(eventName, handlerToRemove);
         }
 
@@ -114,22 +108,6 @@ namespace Asseco.EventBus
             {
                 OnEventRemoved(this, eventName);
             }
-        }
-
-
-        private SubscriptionInfo FindDynamicSubscriptionToRemove<TH>(string eventName)
-            where TH : IDynamicIntegrationEventHandler
-        {
-            return DoFindSubscriptionToRemove(eventName, typeof(TH));
-        }
-
-
-        private SubscriptionInfo FindSubscriptionToRemove<T, TH>()
-             where T : IntegrationEvent
-             where TH : IIntegrationEventHandler<T>
-        {
-            var eventName = GetEventKey<T>();
-            return DoFindSubscriptionToRemove(eventName, typeof(TH));
         }
 
         private SubscriptionInfo DoFindSubscriptionToRemove(string eventName, Type handlerType)
