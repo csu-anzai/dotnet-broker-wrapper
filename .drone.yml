@@ -12,7 +12,7 @@ pipeline:
       - dotnet build
       - dotnet pack --configuration Release /p:PackageVersion=$(head -n 1 ../.version)
       - cd bin/Release
-      - dotnet nuget push *.nupkg -s http://npmdo.asseco.rs:4874 -k $NUGET_KEY
+      - dotnet nuget push *.nupkg -s http://packages.asseco.rs:30888/repository/nuget -k $NUGET_KEY
     secrets: [ NUGET_KEY ]
     volumes:
       - /etc/hosts:/etc/hosts
