@@ -42,11 +42,11 @@ namespace Asseco.EventBus
                 _handlers.Add(eventName, new List<SubscriptionInfo>());
             }
 
-            if (_handlers[eventName].Any(s => s.HandlerType == handlerType))
-            {
-                throw new ArgumentException(
-                    $"Handler Type {handlerType.Name} already registered for '{eventName}'", nameof(handlerType));
-            }
+            //if (_handlers[eventName].Any(s => s.HandlerType == handlerType))
+            //{
+            //    throw new ArgumentException(
+            //        $"Handler Type {handlerType.Name} already registered for '{eventName}'", nameof(handlerType));
+            //}
 
             if (isDynamic)
             {
