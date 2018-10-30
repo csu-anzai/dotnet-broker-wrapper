@@ -1,7 +1,7 @@
 pipeline:
 
   get_tags:
-    image: dtr.asseco.rs/asseco/image-tagger
+    image: registry.asseco.rs/asseco/image-tagger
     run: plugin
     secrets: [GITHUB_TOKEN]
 
