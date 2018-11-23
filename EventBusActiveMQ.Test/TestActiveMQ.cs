@@ -1,7 +1,7 @@
 using System;
 using Xunit;
 using Xunit.Abstractions;
-using Asseco.EventBusActiveMQ;
+using EventBusActiveMQImpl;
 using Asseco.EventBus.Events;
 using System.Diagnostics;
 using Asseco.EventBus.Abstractions;

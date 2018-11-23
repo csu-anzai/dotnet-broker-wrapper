@@ -11,9 +11,8 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Threading;
-using EventBusActiveMQ;
 
-namespace Asseco.EventBusActiveMQ
+namespace EventBusActiveMQImpl
 {
     public delegate void MessageReceivedDelegate(IntegrationEvent message, string topic);
 
@@ -27,7 +26,8 @@ namespace Asseco.EventBusActiveMQ
 
         public EventBusActiveMQ(Uri uri, String username, String password)
         {
-            this.uri = uri.AddParameter("transport.startupMaxReconnectAttempts", "5");
+            var url = uri.AddParameter("transport.startupMaxReconnectAttempts", "5");
+            this.uri = url;
             Console.WriteLine(uri.ToString());
             IConnectionFactory factory = new ConnectionFactory(uri);
             try
