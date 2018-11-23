@@ -20,8 +20,7 @@ namespace EventBusActiveMQTest
         [Fact]
         public void PubSub()
         {
-            Uri uri = new Uri("activemq:tcp://localhost:61616");
-            IEventBus bus = new EventBusActiveMQ(uri, "admin", "admin");
+            IEventBus bus = new EventBusActiveMQ("localhost:61616", "admin", "admin");
             bus.Subscribe("notifications", new MessageEventHandler());
             Debug.WriteLine("Subscribed.");
             MessageEvent messageEvent = new MessageEvent("notifications", "This is a text of the message");

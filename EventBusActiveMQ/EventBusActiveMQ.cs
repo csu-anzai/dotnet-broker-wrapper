@@ -18,17 +18,15 @@ namespace EventBusActiveMQImpl
 
     public class EventBusActiveMQ : IEventBus
     {
-        private IConnection connection;
-        private ISession session;
-        private Uri uri;
-        private InMemoryEventBusSubscriptionsManager memory = new InMemoryEventBusSubscriptionsManager();
+        private readonly IConnection connection;
+        private readonly ISession session;
+        private readonly Uri uri;
+        private readonly InMemoryEventBusSubscriptionsManager memory = new InMemoryEventBusSubscriptionsManager();
         public event MessageReceivedDelegate OnMessageReceived;
 
-        public EventBusActiveMQ(Uri uri, String username, String password)
+        public EventBusActiveMQ(string hostname, String username, String password)
         {
-            var url = uri.AddParameter("transport.startupMaxReconnectAttempts", "5");
-            this.uri = url;
-            Console.WriteLine(uri.ToString());
+            this.uri = new Uri("failover:(tcp://" + hostname + ")?transport.startupMaxReconnectAttempts=3&transport.initialReconnectDelay=100");
             IConnectionFactory factory = new ConnectionFactory(uri);
             try
             {
