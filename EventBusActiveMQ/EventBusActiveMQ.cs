@@ -35,7 +35,7 @@ namespace Asseco.EventBusActiveMQ
                     this.connection = factory.CreateConnection(username, password);
                     this.connection.Start();
                     this.session = this.connection.CreateSession();
-                };
+                });
             }
             catch (NMSException ex)
             {
