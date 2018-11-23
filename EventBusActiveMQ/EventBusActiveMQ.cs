@@ -16,7 +16,7 @@ namespace Asseco.EventBusActiveMQ
 {
     public delegate void MessageReceivedDelegate(IntegrationEvent message, string topic);
 
-    public class EventBusActiveMQ  : IEventBus
+    public class EventBusActiveMQ : IEventBus
     {
         private IConnection connection;
         private ISession session;
@@ -30,12 +30,10 @@ namespace Asseco.EventBusActiveMQ
             IConnectionFactory factory = new ConnectionFactory(uri);
             try
             {
-                Task.Run(() =>
-                {
-                    this.connection = factory.CreateConnection(username, password);
-                    this.connection.Start();
-                    this.session = this.connection.CreateSession();
-                });
+                this.connection = factory.CreateConnection(username, password);
+                this.connection.Start();
+                this.session = this.connection.CreateSession();
+
             }
             catch (NMSException ex)
             {
