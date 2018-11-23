@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Threading;
+using EventBusActiveMQ;
 
 namespace Asseco.EventBusActiveMQ
 {
@@ -26,7 +27,7 @@ namespace Asseco.EventBusActiveMQ
 
         public EventBusActiveMQ(Uri uri, String username, String password)
         {
-            this.uri = uri;
+            this.uri = uri.AddParameter("startupMaxReconnectAttempts", "5");
             IConnectionFactory factory = new ConnectionFactory(uri);
             try
             {
