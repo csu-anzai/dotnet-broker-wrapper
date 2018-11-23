@@ -129,20 +129,17 @@ namespace EventBusActiveMQImpl
 
         private void DoInternalSubscription(String eventKey)
         {
-            //var containsKey = memory.HasSubscriptionsForEvent(eventKey);
-            //if (!containsKey) {
             try
             {
                 ActiveMQTopic topic = new ActiveMQTopic(eventKey);
-                // this.session.CreateDurableConsumer(topic, "subscription-name", null, false);
-                IMessageConsumer consumer = this.session.CreateConsumer(topic);
+                var newSession = this.connection.CreateSession();
+                IMessageConsumer consumer = newSession.CreateConsumer(topic);
                 consumer.Listener += new MessageListener(ReceiveMessage);
             }
             catch (NMSException ex)
             {
                 throw new NMSException("Could not subscribe", ex);
             }
-            //}
         }
 
         public void ReceiveMessage(IMessage msg)
