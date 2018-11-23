@@ -27,7 +27,7 @@ namespace Asseco.EventBusActiveMQ
 
         public EventBusActiveMQ(Uri uri, String username, String password)
         {
-            this.uri = uri.AddParameter("startupMaxReconnectAttempts", "5").AddParameter("warnAfterReconnectAttempts", "3");
+            this.uri = uri.AddParameter("transport.startupMaxReconnectAttempts", "5");
             IConnectionFactory factory = new ConnectionFactory(uri);
             try
             {
