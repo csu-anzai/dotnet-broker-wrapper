@@ -12,6 +12,6 @@
     <DotNetCliToolReference Include="dotnet-setversion" Version="1.0.2" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Apache.NMS.ActiveMQ" Version="1.7.2" />
+    <PackageReference Include="Apache.NMS.ActiveMQ.NetCore" Version="1.7.2" />
   </ItemGroup>
 </Project>
