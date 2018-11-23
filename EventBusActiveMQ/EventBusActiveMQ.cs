@@ -10,12 +10,13 @@ using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.Threading;
 
 namespace Asseco.EventBusActiveMQ
 {
     public delegate void MessageReceivedDelegate(IntegrationEvent message, string topic);
 
-    public class EventBusActiveMQ : IEventBus
+    public class EventBusActiveMQ  : IEventBus
     {
         private IConnection connection;
         private ISession session;
@@ -29,9 +30,12 @@ namespace Asseco.EventBusActiveMQ
             IConnectionFactory factory = new ConnectionFactory(uri);
             try
             {
-                this.connection = factory.CreateConnection(username, password);
-                this.connection.Start();
-                this.session = this.connection.CreateSession();
+                Task.Run(() =>
+                {
+                    this.connection = factory.CreateConnection(username, password);
+                    this.connection.Start();
+                    this.session = this.connection.CreateSession();
+                };
             }
             catch (NMSException ex)
             {
@@ -129,16 +133,17 @@ namespace Asseco.EventBusActiveMQ
         {
             //var containsKey = memory.HasSubscriptionsForEvent(eventKey);
             //if (!containsKey) {
-                try
-                {
-                    ActiveMQTopic topic = new ActiveMQTopic(eventKey);
-                    IMessageConsumer consumer = this.session.CreateConsumer(topic);
-                    consumer.Listener += new MessageListener(ReceiveMessage);
-                }
-                catch (NMSException ex)
-                {
-                    throw new NMSException("Could not subscribe", ex);
-                }
+            try
+            {
+                ActiveMQTopic topic = new ActiveMQTopic(eventKey);
+                // this.session.CreateDurableConsumer(topic, "subscription-name", null, false);
+                IMessageConsumer consumer = this.session.CreateConsumer(topic);
+                consumer.Listener += new MessageListener(ReceiveMessage);
+            }
+            catch (NMSException ex)
+            {
+                throw new NMSException("Could not subscribe", ex);
+            }
             //}
         }
 
