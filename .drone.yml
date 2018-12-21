@@ -1,9 +1,12 @@
-pipeline:
+clone:
+  fetch_source_code:
+    image: plugins/git
+    depth: 1
 
-  get_tags:
+pipeline:
+  prepare_build_tags:
     image: registry.asseco.rs/asseco/image-tagger
-    run: plugin
-    secrets: [GITHUB_TOKEN]
+    secrets: [ GITHUB_TOKEN ]
 
   build_event_bus:
     image: microsoft/aspnetcore-build
@@ -14,8 +17,6 @@ pipeline:
       - cd bin/Release
       - dotnet nuget push *.nupkg -s http://packages.asseco.rs:30888/repository/nuget -k $NUGET_KEY
     secrets: [ NUGET_KEY ]
-    volumes:
-      - /etc/hosts:/etc/hosts
 
   build_event_bus_active_mq:
     image: microsoft/aspnetcore-build
@@ -26,8 +27,6 @@ pipeline:
       - cd bin/Release
       - dotnet nuget push *.nupkg -s http://packages.asseco.rs:30888/repository/nuget -k $NUGET_KEY
     secrets: [ NUGET_KEY ]
-    volumes:
-      - /etc/hosts:/etc/hosts
 
   tag_latest_event_bus:
     image: microsoft/aspnetcore-build
@@ -42,7 +41,6 @@ pipeline:
     image: microsoft/aspnetcore-build
     commands:
       - cd EventBusActiveMQ
-      - dotnet restore
       - dotnet setversion $(head -n 1 ../.version)
     when:
       event: tag
@@ -56,13 +54,12 @@ pipeline:
       - git add .
       - git commit -m "Drone automated commmit build - $DRONE_BUILD_NUMBER [CI SKIP]"
       - git pull origin master
-      - git remote set-url origin https://"GITHUB_NAME":"$GITHUB_TOKEN"@github.com/asseco-see/dotnet-broker-wrapper.git
       - git push origin master
-    secrets: [GIT_NAME, GIT_EMAIL, GITHUB_TOKEN, GITHUB_NAME]
+    secrets: [ GIT_NAME, GIT_EMAIL, GITHUB_TOKEN, GITHUB_NAME ]
     when:
       event: tag
 
-  slack:
+  slack_notify:
     image: plugins/slack
     secrets: [ slack_webhook ]
     channel: drone
@@ -71,7 +68,7 @@ pipeline:
       status: [ failure ]
     template: >
       {{#success build.status}}
-        Repo {{repo.name}} build {{build.number}} succeeded. Good job {{build.author}}. Build time: {{since build.started}}
+        Repo {{repo.name}} build {{build.number}} succeeded. Good job {{build.author}}!
       {{else}}
-        Repo {{repo.name}} build {{build.number}} failed. {{build.author}} Fix me!.
+        Repo {{repo.name}} build {{build.number}} failed. <@{{build.author}}> fix me please!
       {{/success}}
