@@ -170,5 +170,9 @@ namespace EventBusActiveMQImpl
             }
         }
 
+        public bool IsConnected()
+        {
+            return connection.IsStarted;
+        }
     }
 }

@@ -10,5 +10,6 @@ namespace Asseco.EventBus.Abstractions
         void Unsubscribe<T>(string topic, IIntegrationEventHandler<T> integrationEventHandler) where T : IntegrationEvent;
         void SubscribeDynamic(string topic, IIntegrationEventHandler<dynamic> handler);
         void UnsubscribeDynamic(string topic, IIntegrationEventHandler<dynamic> handler);
+        bool IsConnected();
     }
 }
