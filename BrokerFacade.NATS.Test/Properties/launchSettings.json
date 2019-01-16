@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "BrokerFacade.NATS.Test": {
+      "commandName": "Project",
+      "commandLineArgs": "abc1 sample1 clientb"
+    }
+  }
+}

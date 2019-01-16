@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "BrokerFacade.ActiveMQ.Test": {
+      "commandName": "Project",
+      "commandLineArgs": "abcde sample5"
+    }
+  }
+}
