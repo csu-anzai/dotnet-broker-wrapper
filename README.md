@@ -70,7 +70,7 @@ There is two ways of consuming messages. In order to have shared subscription us
 
 Subscription:
 ```csharp
- eventBus.Subscribe(topic, new SampleEventHandler());
+eventBus.Subscribe(topic, new SampleEventHandler());
 ```
 
 ### Shared subscription
@@ -80,8 +80,8 @@ eventBus.SubscribeShared(topic, subscriptionName, new SampleEventHandler());
 ```
 
 ### Handling messages:
-```
- public class SampleEventHandler : AbstractMessageEventHandler
+```csharp
+public class SampleEventHandler : AbstractMessageEventHandler
 {
 	public override void OnMessage(MessageEvent messageEvent)
 	{
