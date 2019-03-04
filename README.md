@@ -87,9 +87,7 @@ public class SampleEventHandler : AbstractMessageEventHandler
 	{
 		if (messageEvent is SampleEvent e)
 		{
-			Thread.Sleep(1000);
 			Console.WriteLine(e.ApplicationNumber + " " + e.UUID);
-			Console.WriteLine("Holder UUID " + (MessageEventHolder.MessageEvent.Value as SampleEvent).UUID);
 		}
 	}
 }
