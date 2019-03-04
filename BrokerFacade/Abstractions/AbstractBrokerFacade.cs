@@ -22,8 +22,8 @@ namespace BrokerFacade.Abstractions
             ClientId = clientId;
         }
 
-        public abstract Subscription SubscribeShared(string topic, string subscriptionName, AbstractMessageEventHandler handler);
-        public abstract Subscription Subscribe(string topic, AbstractMessageEventHandler handler);
+        public abstract Subscription Subscribe(string topic, string subscriptionName, AbstractMessageEventHandler handler);
+        public abstract Subscription Subscribe(string topic, string subscriptionName, bool durable, AbstractMessageEventHandler handler);
         public abstract void Publish(string topic, MessageEvent messageEvent);
         public abstract void Unsubscribe(Subscription subscription);
 
@@ -31,5 +31,5 @@ namespace BrokerFacade.Abstractions
         {
             return ConnectionEstablished;
         }
-    }
+ }
 }

@@ -41,7 +41,7 @@ namespace BrokerFacade.RabbitMQ.Test
                     subName = args[0];
                 }
 
-                eventBus.SubscribeShared(topic, subName, new SampleEventHandler());
+                eventBus.Subscribe(topic, subName, new SampleEventHandler());
             }
         }
     }

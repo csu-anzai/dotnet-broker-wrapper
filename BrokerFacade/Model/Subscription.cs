@@ -10,5 +10,6 @@ namespace BrokerFacade.Model
         public string Topic { get; set; }
         public string SubscriptionName { get; set; }
         public AbstractMessageEventHandler Handler { get; set; }
+        public bool Durable { get; set; } = true;
     }
 }

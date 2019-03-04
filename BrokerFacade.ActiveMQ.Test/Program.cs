@@ -3,6 +3,7 @@ using BrokerFacade.Attributes;
 using BrokerFacade.Context;
 using BrokerFacade.Interfaces;
 using BrokerFacade.Model;
+using BrokerFacade.Util;
 using System;
 using System.Threading;
 
@@ -24,7 +25,7 @@ namespace BrokerFacade.ActiveMQ.Test
                 topic = args[1];
             }
             var eventBus = new BrokerFacadeActiveMQ("localhost", "5672", "admin", "admin", topic + "-client");
-          
+
             if (args.Length > 0 && args[0] == "send")
             {
                 while (true)
@@ -42,7 +43,7 @@ namespace BrokerFacade.ActiveMQ.Test
                     subName = args[0];
                 }
                 Console.WriteLine("Sub name " + subName + " and topic: " + topic);
-                eventBus.Subscribe(topic, new SampleEventHandler());
+                eventBus.Subscribe(topic, SubscriptionHostname.GetUniqueSubscription(), new SampleEventHandler());
             }
         }
     }

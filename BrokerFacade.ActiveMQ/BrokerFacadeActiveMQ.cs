@@ -7,6 +7,7 @@ using BrokerFacade.Model;
 using BrokerFacade.Serialization;
 using BrokerFacade.Util;
 using Serilog;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -21,11 +22,8 @@ namespace BrokerFacade.ActiveMQ
         private readonly int linkCredit = 300;
         private Session sendSession;
         private readonly string connectionPath;
-
         private readonly ConcurrentList<Subscription> subscriptionRequests = new ConcurrentList<Subscription>();
-        private readonly ConcurrentList<PublishRequest> publishRequests = new ConcurrentList<PublishRequest>();
         private readonly ConcurrentList<ActiveSubscription> activeSubscriptions = new ConcurrentList<ActiveSubscription>();
-
         private readonly Dictionary<string, SenderLink> senderLinks = new Dictionary<string, SenderLink>();
 
         private static object publishLock = new object();
@@ -39,11 +37,7 @@ namespace BrokerFacade.ActiveMQ
         : base(hostname, port, username, password, clientId)
         {
             connectionPath = "amqp://" + username + ":" + password + "@" + hostname + ":" + port;
-            Task.Run(() =>
-            {
-                Log.Information("Broker connecting");
-                Connect();
-            });
+            Connect();
         }
         private void Connect()
         {
@@ -65,32 +59,6 @@ namespace BrokerFacade.ActiveMQ
             OnConnect();
         }
 
-        public void OnConnect()
-        {
-            // Add pending publications
-            lock (publishLock)
-            {
-                foreach (PublishRequest request in publishRequests.ToList())
-                {
-                    Publish(request.Topic, request.MessageEvent);
-                    publishRequests.Remove(request);
-                }
-            }
-            // Add pending subscriptions
-            foreach (Subscription request in subscriptionRequests.ToList())
-            {
-                if (request.SubscriptionName != null)
-                {
-                    SubscribeShared(request.Topic, request.SubscriptionName, request.Handler);
-                }
-                else
-                {
-                    Subscribe(request.Topic, request.Handler);
-                }
-                subscriptionRequests.Remove(request);
-            }
-        }
-
         private void Connection_Closed(IAmqpObject sender, Error error)
         {
             foreach (ActiveSubscription request in activeSubscriptions)
@@ -106,28 +74,32 @@ namespace BrokerFacade.ActiveMQ
             Connect();
         }
 
+
+        public void OnConnect()
+        {
+            // Add pending subscriptions
+            foreach (Subscription request in subscriptionRequests.ToList())
+            {
+                Subscribe(request.Topic, request.SubscriptionName, request.Handler);
+                subscriptionRequests.Remove(request);
+            }
+        }
+
+
         public override void Publish(string topic, MessageEvent messageEvent)
         {
-            if (!ConnectionEstablished)
-            {
-                lock (publishLock)
-                {
-                    publishRequests.Add(new PublishRequest { Topic = topic, MessageEvent = messageEvent });
-                }
-                return;
-            }
-            if (sendSession == null)
-            {
-                sendSession = new Session(Connection);
-            }
-            Target target = new Target
-            {
-                Address = topic,
-                Capabilities = new Symbol[] { new Symbol("topic") }
-            };
-            SenderLink sender = null;
             try
             {
+                if (sendSession == null)
+                {
+                    sendSession = new Session(Connection);
+                }
+                Target target = new Target
+                {
+                    Address = topic,
+                    Capabilities = new Symbol[] { new Symbol("topic") }
+                };
+                SenderLink sender = null;
                 if (senderLinks.ContainsKey(topic))
                 {
                     sender = senderLinks[topic];
@@ -152,62 +124,45 @@ namespace BrokerFacade.ActiveMQ
             }
             catch (AmqpException e)
             {
-                if (sender != null) { try { sender.Close(); } catch { } }
-                senderLinks.Remove(topic);
-                lock (publishLock)
-                {
-                    publishRequests.Add(new PublishRequest { Topic = topic, MessageEvent = messageEvent });
-                }
+                Console.WriteLine(e);
             }
         }
 
-        private Subscription SubscribeInternal(string topic, string subscriptionName, AbstractMessageEventHandler handler, bool isShared)
+        private Subscription SubscribeInternal(string topic, string subscriptionName, AbstractMessageEventHandler handler, bool durable)
         {
-            if (!ConnectionEstablished)
+            Session session = new Session(Connection);
+            Symbol[] capabilities = null;
+            if (subscriptionName != null)
             {
-                subscriptionRequests.Add(
-                    new Subscription { Topic = topic, SubscriptionName = subscriptionName, Handler = handler }
-                );
+                capabilities = new Symbol[] { new Symbol("topic"), new Symbol("global"), new Symbol("shared"), new Symbol("SHARED-SUBS") };
             }
             else
             {
-                Session session = new Session(Connection);
-                Symbol[] capabilities = null;
-                if (isShared)
-                {
-                    // Global symbol is needed for Shared subscription
-                    capabilities = new Symbol[] { new Symbol("topic"), new Symbol("global"), new Symbol("shared"), new Symbol("SHARED-SUBS") };
-                }
-                else
-                {
-                    capabilities = new Symbol[] { new Symbol("topic") };
-                }
-
-                Source target = new Source
-                {
-                    Address = topic,
-                    Durable = 2,
-                    Capabilities = capabilities
-                };
-                ReceiverLink receiverLink = new ReceiverLink(session, subscriptionName, target, null);
-                receiverLink.Start(linkCredit, (receiver, message) =>
-                {
-                    MessageEvent eventMsg = MessageEventSerializer.GetEventObject(message.Body.ToString(), GetDictonaryFromMap(message.ApplicationProperties?.Map));
-                    eventMsg.Topic = topic;
-                    handler.OnMessageInternal(eventMsg);
-                    receiver.Accept(message);
-                });
-                activeSubscriptions.Add(
-                    new ActiveSubscription { Topic = topic, SubscriptionName = topic + "_" + subscriptionName, Handler = handler, Link = receiverLink }
-                );
+                capabilities = new Symbol[] { new Symbol("topic") };
             }
+            Source target = new Source
+            {
+                Address = topic,
+                Durable = (durable) ? 2u : 0u,
+                Capabilities = capabilities
+            };
+            ReceiverLink receiverLink = new ReceiverLink(session, subscriptionName, target, null);
+            receiverLink.Start(linkCredit, (receiver, message) =>
+            {
+                MessageEvent eventMsg = MessageEventSerializer.GetEventObject(message.Body.ToString(), GetDictonaryFromMap(message.ApplicationProperties?.Map));
+                eventMsg.Topic = topic;
+                handler.OnMessageInternal(eventMsg);
+                receiver.Accept(message);
+            });
+            activeSubscriptions.Add(
+                new ActiveSubscription { Topic = topic, SubscriptionName = topic + "_" + subscriptionName, Handler = handler, Link = receiverLink }
+            );
             return new Subscription { Handler = handler, Topic = topic };
         }
 
-        public override Subscription Subscribe(string topic, AbstractMessageEventHandler handler)
+        public override Subscription Subscribe(string topic, string subscriptionName, AbstractMessageEventHandler handler)
         {
-            var subName = SubscriptionHostname.GetUniqueSubscription();
-            return SubscribeInternal(topic, subName, handler, false);
+            return SubscribeInternal(topic, subscriptionName, handler, true);
         }
 
         private Dictionary<string, object> GetDictonaryFromMap(Map map)
@@ -224,9 +179,9 @@ namespace BrokerFacade.ActiveMQ
             return headers;
         }
 
-        public override Subscription SubscribeShared(string topic, string subscriptionName, AbstractMessageEventHandler handler)
+        public override Subscription Subscribe(string topic, string subscriptionName, bool durable, AbstractMessageEventHandler handler)
         {
-            return SubscribeInternal(topic, subscriptionName, handler, true);
+            return SubscribeInternal(topic, subscriptionName, handler, durable);
         }
 
         public override void Unsubscribe(Subscription subscription)
@@ -237,13 +192,6 @@ namespace BrokerFacade.ActiveMQ
                 active.Link.Close();
                 activeSubscriptions.Remove(active);
             }
-
-            var inactive = subscriptionRequests.Where(x => x.Handler.Equals(subscription.Handler) && x.Topic.Equals(subscription.Topic)).FirstOrDefault();
-            if (inactive != null)
-            {
-                subscriptionRequests.Remove(inactive);
-            }
-
         }
     }
 }

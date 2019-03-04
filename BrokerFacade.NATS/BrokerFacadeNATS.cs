@@ -21,7 +21,6 @@ namespace BrokerFacade.NATS
         private IStanConnection Connection;
         private readonly ConcurrentList<ActiveSubscription> activeSubscriptions = new ConcurrentList<ActiveSubscription>();
         private readonly ConcurrentList<BrokerFacade.Model.Subscription> subscriptionRequests = new ConcurrentList<BrokerFacade.Model.Subscription>();
-        private readonly ConcurrentList<PublishRequest> publishRequests = new ConcurrentList<PublishRequest>();
         private static object publishLock = new object();
 
         public BrokerFacadeNATS(string hostname, string port, string username, string password, string clientId) : base(hostname, port, username, password, clientId)
@@ -89,128 +88,95 @@ namespace BrokerFacade.NATS
                 Log.Information("Broker connected");
                 OnConnect();
             }
-            catch
+            catch (Exception e)
             {
+                Console.WriteLine(e);
             }
         }
 
         public void OnConnect()
         {
-            // Add pending publications
-            lock (publishLock)
-            {
-                foreach (PublishRequest request in publishRequests.ToList())
-                {
-                    Publish(request.Topic, request.MessageEvent);
-                    publishRequests.Remove(request);
-                }
-            }
             // Add pending subscriptions
             foreach (BrokerFacade.Model.Subscription request in subscriptionRequests.ToList())
             {
-                if (request.SubscriptionName != null)
-                {
-                    SubscribeShared(request.Topic, request.SubscriptionName, request.Handler);
-                }
-                else
-                {
-                    Subscribe(request.Topic, request.Handler);
-                }
+                Subscribe(request.Topic, request.SubscriptionName, request.Durable, request.Handler);
                 subscriptionRequests.Remove(request);
             }
         }
 
 
-        private BrokerFacade.Model.Subscription SubscribeInternal(string topic, string subscriptionName, AbstractMessageEventHandler handler)
+        private BrokerFacade.Model.Subscription SubscribeInternal(string topic, string subscriptionName, AbstractMessageEventHandler handler, bool durable)
         {
-            if (!ConnectionEstablished)
+            EventHandler<StanMsgHandlerArgs> eh = (sender, args) =>
             {
-                subscriptionRequests.Add(
-                    new BrokerFacade.Model.Subscription { Topic = topic, SubscriptionName = subscriptionName, Handler = handler }
-                );
-            }
-            else
-            {
-                EventHandler<StanMsgHandlerArgs> eh = (sender, args) =>
+                var body = Encoding.UTF8.GetString(args.Message.Data);
+                var bodyObj = JObject.Parse(body);
+                if (bodyObj.ContainsKey("kind"))
                 {
-                    var body = Encoding.UTF8.GetString(args.Message.Data);
-                    var bodyObj = JObject.Parse(body);
-                    if (bodyObj.ContainsKey("kind"))
+                    Dictionary<string, object> headerValues = new Dictionary<string, object>();
+                    foreach (JProperty property in bodyObj.Properties())
                     {
-                        Dictionary<string, object> headerValues = new Dictionary<string, object>();
-                        foreach (JProperty property in bodyObj.Properties())
+                        if (!property.Name.Equals("data"))
                         {
-                            if (!property.Name.Equals("data"))
+                            var valueProperty = MessageEventSerializer.MapJTokenValue(property.Value);
+                            if (valueProperty != null)
                             {
-                                var valueProperty = MessageEventSerializer.MapJTokenValue(property.Value);
-                                if (valueProperty != null)
-                                {
-                                    headerValues.Add(property.Name, valueProperty);
-                                }
+                                headerValues.Add(property.Name, valueProperty);
                             }
                         }
-                        var obj = bodyObj["data"] != null ? bodyObj["data"].ToString() : "{}";
-                        MessageEvent eventMsg = MessageEventSerializer.GetEventObject(obj, headerValues);
-                        eventMsg.Topic = topic;
-                        handler.OnMessageInternal(eventMsg);
-                        args.Message.Ack();
                     }
-                };
-                IStanSubscription subscription = null;
+                    var obj = bodyObj["data"] != null ? bodyObj["data"].ToString() : "{}";
+                    MessageEvent eventMsg = MessageEventSerializer.GetEventObject(obj, headerValues);
+                    eventMsg.Topic = topic;
+                    handler.OnMessageInternal(eventMsg);
+                    args.Message.Ack();
+                }
+            };
+            IStanSubscription subscription = null;
 
-                var opts = StanSubscriptionOptions.GetDefaultOptions();
+            var opts = StanSubscriptionOptions.GetDefaultOptions();
+            if (durable)
+            {
                 opts.DurableName = subscriptionName;
-                opts.ManualAcks = true;
-                opts.AckWait = 60000;
-                opts.MaxInflight = 1;
-                new Thread(() =>
-                {
-                    subscription = Connection.Subscribe(topic, subscriptionName, opts, eh);
-
-                }).Start();
-                activeSubscriptions.Add(
-                    new ActiveSubscription { Topic = topic, SubscriptionName = subscriptionName, Handler = handler, Channel = subscription }
-                );
             }
+            opts.ManualAcks = true;
+            opts.AckWait = 60000;
+            opts.MaxInflight = 1;
+            new Thread(() =>
+            {
+                subscription = Connection.Subscribe(topic, subscriptionName, opts, eh);
+
+            }).Start();
+            activeSubscriptions.Add(
+                new ActiveSubscription { Topic = topic, SubscriptionName = subscriptionName, Handler = handler, Channel = subscription }
+            );
             return new BrokerFacade.Model.Subscription { Handler = handler, Topic = topic };
         }
 
         public override void Publish(string topic, MessageEvent messageEvent)
         {
-            if (!ConnectionEstablished)
-            {
-                lock (publishLock)
-                {
-                    publishRequests.Add(new PublishRequest { Topic = topic, MessageEvent = messageEvent });
-                }
-                return;
-            }
             try
             {
                 var message = MessageEventSerializer.GetMessageEventHeaders(messageEvent);
-              //  message.Add("data", messageEvent);
+                //  message.Add("data", messageEvent);
                 var msg = MessageEventSerializer.SerializeCustomEventBody(message);
                 Connection.Publish(topic, Encoding.UTF8.GetBytes(msg));
 
             }
             catch (Exception e)
             {
-                lock (publishLock)
-                {
-                    publishRequests.Add(new PublishRequest { Topic = topic, MessageEvent = messageEvent });
-                }
+                Console.WriteLine(e);
             }
         }
 
-        public override BrokerFacade.Model.Subscription Subscribe(string topic, AbstractMessageEventHandler handler)
+        public override BrokerFacade.Model.Subscription Subscribe(string topic, string subscriptionName, bool durable, AbstractMessageEventHandler handler)
         {
-            var subName = SubscriptionHostname.GetUniqueSubscription();
-            return SubscribeInternal(topic, subName, handler);
+            return SubscribeInternal(topic, subscriptionName, handler, durable);
         }
 
-        public override BrokerFacade.Model.Subscription SubscribeShared(string topic, string subscriptionName, AbstractMessageEventHandler handler)
+        public override BrokerFacade.Model.Subscription Subscribe(string topic, string subscriptionName, AbstractMessageEventHandler handler)
         {
-            return SubscribeInternal(topic, subscriptionName, handler);
+            return SubscribeInternal(topic, subscriptionName, handler, true);
         }
 
         public override void Unsubscribe(BrokerFacade.Model.Subscription subscription)
