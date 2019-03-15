@@ -3,6 +3,7 @@ using Amqp.Framing;
 using Amqp.Types;
 using BrokerFacade.Abstractions;
 using BrokerFacade.ActiveMQ.Model;
+using BrokerFacade.Configuration;
 using BrokerFacade.Model;
 using BrokerFacade.Serialization;
 using BrokerFacade.Util;
@@ -19,7 +20,7 @@ namespace BrokerFacade.ActiveMQ
     public class BrokerFacadeActiveMQ : AbstractBrokerFacade
     {
         private Connection Connection;
-        private readonly int linkCredit = 300;
+        private readonly int linkCredit = 200;
         private Session sendSession;
         private readonly string connectionPath;
         private readonly ConcurrentList<Subscription> subscriptionRequests = new ConcurrentList<Subscription>();
@@ -27,6 +28,10 @@ namespace BrokerFacade.ActiveMQ
         private readonly Dictionary<string, SenderLink> senderLinks = new Dictionary<string, SenderLink>();
 
         private static object publishLock = new object();
+
+        public override event ConnectionState Connected;
+        public override event ConnectionState ConnectionLost;
+        public override event ConnectionState ReconnectionStarted;
 
         public BrokerFacadeActiveMQ(
             string hostname,
@@ -37,30 +42,26 @@ namespace BrokerFacade.ActiveMQ
         : base(hostname, port, username, password, clientId)
         {
             connectionPath = "amqp://" + username + ":" + password + "@" + hostname + ":" + port;
-            Connect();
-        }
-        private void Connect()
-        {
-            while (!ConnectionEstablished)
-            {
-                ConnectAgain();
-                Thread.Sleep(500);
-            }
         }
 
-        private void ConnectAgain()
+        protected override void ConnectInternal()
         {
             ConnectionFactory factory = new ConnectionFactory();
-            factory.AMQP.ContainerId = ClientId;
             Connection = factory.CreateAsync(new Address(connectionPath)).Result;
+            factory.AMQP.ContainerId = ClientId;
+            factory.TCP.SendTimeout = SendTimeout;
+            factory.TCP.ReceiveTimeout = ReceiveTimeout;
             Connection.Closed += Connection_Closed;
             ConnectionEstablished = true;
+            Connected();
             Log.Information("Broker connected");
             OnConnect();
+
         }
 
         private void Connection_Closed(IAmqpObject sender, Error error)
         {
+            ConnectionLost();
             foreach (ActiveSubscription request in activeSubscriptions)
             {
                 subscriptionRequests.Add(request);
@@ -71,7 +72,8 @@ namespace BrokerFacade.ActiveMQ
             sendSession = null;
             ConnectionEstablished = false;
             Log.Information("Broker reconnecting");
-            Connect();
+            ReconnectionStarted();
+            Reconnect();
         }
 
 
@@ -85,47 +87,39 @@ namespace BrokerFacade.ActiveMQ
             }
         }
 
-
-        public override void Publish(string topic, MessageEvent messageEvent)
+        protected override void PublishInternal(string topic, MessageEvent messageEvent)
         {
-            try
+            if (sendSession == null)
             {
-                if (sendSession == null)
-                {
-                    sendSession = new Session(Connection);
-                }
-                Target target = new Target
-                {
-                    Address = topic,
-                    Capabilities = new Symbol[] { new Symbol("topic") }
-                };
-                SenderLink sender = null;
-                if (senderLinks.ContainsKey(topic))
-                {
-                    sender = senderLinks[topic];
-                }
-                else
-                {
-                    sender = new SenderLink(sendSession, "sender-link-" + topic, target, null);
-                    senderLinks.Add(topic, sender);
-                }
-                Message message = new Message(MessageEventSerializer.SerializeEventBody(messageEvent));
-                var headers = MessageEventSerializer.GetMessageEventHeaders(messageEvent);
-                if (message.ApplicationProperties == null)
-                {
-                    message.ApplicationProperties = new ApplicationProperties();
-                }
-                foreach (KeyValuePair<string, object> entry in headers)
-                {
-                    message.ApplicationProperties[entry.Key] = entry.Value;
-                }
+                sendSession = new Session(Connection);
+            }
+            Target target = new Target
+            {
+                Address = topic,
+                Capabilities = new Symbol[] { new Symbol("topic") }
+            };
+            SenderLink sender = null;
+            if (senderLinks.ContainsKey(topic))
+            {
+                sender = senderLinks[topic];
+            }
+            else
+            {
+                sender = new SenderLink(sendSession, "sender-link-" + topic, target, null);
+                senderLinks.Add(topic, sender);
+            }
+            Message message = new Message(MessageEventSerializer.SerializeEventBody(messageEvent));
+            var headers = MessageEventSerializer.GetMessageEventHeaders(messageEvent);
+            if (message.ApplicationProperties == null)
+            {
+                message.ApplicationProperties = new ApplicationProperties();
+            }
+            foreach (KeyValuePair<string, object> entry in headers)
+            {
+                message.ApplicationProperties[entry.Key] = entry.Value;
+            }
 
-                sender.Send(message);
-            }
-            catch (AmqpException e)
-            {
-                Console.WriteLine(e);
-            }
+            sender.Send(message);
         }
 
         private Subscription SubscribeInternal(string topic, string subscriptionName, AbstractMessageEventHandler handler, bool durable)

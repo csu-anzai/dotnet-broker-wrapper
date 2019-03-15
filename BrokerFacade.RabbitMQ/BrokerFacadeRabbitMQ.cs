@@ -23,26 +23,16 @@ namespace BrokerFacade.RabbitMQ
         private readonly Dictionary<string, IModel> senderLinks = new Dictionary<string, IModel>();
         private readonly ConcurrentList<ActiveSubscription> activeSubscriptions = new ConcurrentList<ActiveSubscription>();
 
+        public override event ConnectionState Connected;
+        public override event ConnectionState ConnectionLost;
+        public override event ConnectionState ReconnectionStarted;
 
         public BrokerFacadeRabbitMQ(string hostname, string port, string username, string password, string clientId) : base(hostname, port, username, password, clientId)
         {
-            Task.Run(() =>
-            {
-                Log.Information("Broker connecting");
-                Connect();
-            });
         }
 
-        private void Connect()
-        {
-            while (!ConnectionEstablished)
-            {
-                ConnectAgain();
-                Thread.Sleep(500);
-            }
-        }
 
-        public void ConnectAgain()
+        protected override void ConnectInternal()
         {
             try
             {
@@ -88,7 +78,7 @@ namespace BrokerFacade.RabbitMQ
             ConnectionEstablished = true;
         }
 
-        public override void Publish(string topic, MessageEvent messageEvent)
+        protected override void PublishInternal(string topic, MessageEvent messageEvent)
         {
             IModel channel = null;
             if (senderLinks.ContainsKey(topic))
@@ -103,28 +93,22 @@ namespace BrokerFacade.RabbitMQ
                     type: "topic");
                 senderLinks.Add(topic, channel);
             }
-            try
-            {
-                string body = MessageEventSerializer.SerializeEventBody(messageEvent);
-                var headers = MessageEventSerializer.GetMessageEventHeaders(messageEvent);
-                BasicProperties properties = new BasicProperties();
+            string body = MessageEventSerializer.SerializeEventBody(messageEvent);
+            var headers = MessageEventSerializer.GetMessageEventHeaders(messageEvent);
+            BasicProperties properties = new BasicProperties();
 
-                properties.Headers = new Dictionary<string, object>();
-                foreach (KeyValuePair<string, object> entry in headers)
-                {
-                    properties.Headers.Add(entry.Key, entry.Value);
-                }
-                var bodyBytes = Encoding.UTF8.GetBytes(body);
-
-                channel.BasicPublish(exchange: topic,
-                                     routingKey: topic,
-                                     basicProperties: properties,
-                                     body: bodyBytes);
-            }
-            catch (Exception e)
+            properties.Headers = new Dictionary<string, object>();
+            foreach (KeyValuePair<string, object> entry in headers)
             {
-                Console.WriteLine(e);
+                properties.Headers.Add(entry.Key, entry.Value);
             }
+            var bodyBytes = Encoding.UTF8.GetBytes(body);
+
+            channel.BasicPublish(exchange: topic,
+                                 routingKey: topic,
+                                 basicProperties: properties,
+                                 body: bodyBytes);
+
         }
 
         private Subscription SubscribeInternal(string topic, string subscriptionName, AbstractMessageEventHandler handler, bool durable)
@@ -180,5 +164,6 @@ namespace BrokerFacade.RabbitMQ
                 activeSubscriptions.Remove(active);
             }
         }
+
     }
 }

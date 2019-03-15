@@ -23,16 +23,15 @@ namespace BrokerFacade.NATS
         private readonly ConcurrentList<BrokerFacade.Model.Subscription> subscriptionRequests = new ConcurrentList<BrokerFacade.Model.Subscription>();
         private static object publishLock = new object();
 
+        public override event ConnectionState Connected;
+        public override event ConnectionState ConnectionLost;
+        public override event ConnectionState ReconnectionStarted;
+
         public BrokerFacadeNATS(string hostname, string port, string username, string password, string clientId) : base(hostname, port, username, password, clientId)
         {
-            Task.Run(() =>
-            {
-                Log.Information("Broker connecting");
-                Connect();
-            });
         }
 
-        private void Reconnect()
+        public override void Reconnect()
         {
             ConnectionEstablished = false;
             foreach (ActiveSubscription request in activeSubscriptions)
@@ -41,19 +40,10 @@ namespace BrokerFacade.NATS
             }
             Log.Information("Broker disconnected");
             activeSubscriptions.Clear();
-            Connect();
+            base.Reconnect();
         }
 
-        private void Connect()
-        {
-            while (!ConnectionEstablished)
-            {
-                ConnectAgain();
-                Thread.Sleep(500);
-            }
-        }
-
-        private void ConnectAgain()
+        protected override void ConnectInternal()
         {
             try
             {
@@ -62,15 +52,16 @@ namespace BrokerFacade.NATS
                 opts.NoRandomize = true;
                 opts.User = Username;
                 opts.Password = Password;
-                opts.Timeout = 1000;
+                opts.Timeout = ConnectionTimeout;
                 opts.AllowReconnect = false;
                 opts.PingInterval = 1000;
                 opts.MaxPingsOut = 2;
                 opts.DisconnectedEventHandler += (sender, args) =>
                 {
+                    ConnectionLost();
+                    ReconnectionStarted();
                     Reconnect();
                 };
-
                 var splittedServers = Hostname.Split(",");
                 var ports = Port.Split(",");
                 List<string> servers = new List<string>();
@@ -81,11 +72,12 @@ namespace BrokerFacade.NATS
                 opts.Servers = servers.ToArray();
                 var stanCf = new StanConnectionFactory();
                 var options = StanOptions.GetDefaultOptions();
-                options.ConnectTimeout = 1000;
+                options.ConnectTimeout = ConnectionTimeout;
                 options.NatsConn = cf.CreateConnection(opts);
                 Connection = stanCf.CreateConnection("test-cluster", ClientId, options);
                 ConnectionEstablished = true;
                 Log.Information("Broker connected");
+                Connected();
                 OnConnect();
             }
             catch (Exception e)
@@ -153,20 +145,12 @@ namespace BrokerFacade.NATS
             return new BrokerFacade.Model.Subscription { Handler = handler, Topic = topic };
         }
 
-        public override void Publish(string topic, MessageEvent messageEvent)
+        protected override void PublishInternal(string topic, MessageEvent messageEvent)
         {
-            try
-            {
-                var message = MessageEventSerializer.GetMessageEventHeaders(messageEvent);
-                //  message.Add("data", messageEvent);
-                var msg = MessageEventSerializer.SerializeCustomEventBody(message);
-                Connection.Publish(topic, Encoding.UTF8.GetBytes(msg));
-
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
-            }
+            var message = MessageEventSerializer.GetMessageEventHeaders(messageEvent);
+            //  message.Add("data", messageEvent);
+            var msg = MessageEventSerializer.SerializeCustomEventBody(message);
+            Connection.Publish(topic, Encoding.UTF8.GetBytes(msg));
         }
 
         public override BrokerFacade.Model.Subscription Subscribe(string topic, string subscriptionName, bool durable, AbstractMessageEventHandler handler)
@@ -193,7 +177,6 @@ namespace BrokerFacade.NATS
             {
                 subscriptionRequests.Remove(inactive);
             }
-
         }
     }
 }

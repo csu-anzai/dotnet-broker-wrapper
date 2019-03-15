@@ -24,7 +24,7 @@ namespace BrokerFacade.ActiveMQ.Test
             {
                 topic = args[1];
             }
-            var eventBus = new BrokerFacadeActiveMQ("localhost", "5672", "admin", "admin", topic + "-client");
+            var eventBus = new BrokerFacadeActiveMQ("artemis-ha-activemq-artemis.artemis-ha.svc.cluster.local", "61616", "artemis", "simetraehcapa", topic + "-client");
 
             if (args.Length > 0 && args[0] == "send")
             {
@@ -43,7 +43,7 @@ namespace BrokerFacade.ActiveMQ.Test
                     subName = args[0];
                 }
                 Console.WriteLine("Sub name " + subName + " and topic: " + topic);
-                eventBus.Subscribe(topic, SubscriptionHostname.GetUniqueSubscription(), new SampleEventHandler());
+                eventBus.Subscribe(topic, subName, new SampleEventHandler());
             }
         }
     }
