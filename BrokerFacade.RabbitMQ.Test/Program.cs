@@ -3,6 +3,7 @@ using BrokerFacade.Attributes;
 using BrokerFacade.Context;
 using BrokerFacade.Interfaces;
 using BrokerFacade.Model;
+using Serilog;
 using System;
 using System.Threading;
 
@@ -18,13 +19,15 @@ namespace BrokerFacade.RabbitMQ.Test
 
         public Program(string[] args)
         {
+            Log.Logger = new LoggerConfiguration()
+                .WriteTo.Console().CreateLogger();
             var topic = "sample";
             if (args.Length > 1)
             {
                 topic = args[1];
             }
             var eventBus = new BrokerFacadeRabbitMQ("localhost", "5672", "admin", "admin", topic + "-client");
-
+            eventBus.Connect();
             if (args.Length > 0 && args[0] == "send")
             {
                 while (true)
@@ -46,20 +49,20 @@ namespace BrokerFacade.RabbitMQ.Test
         }
     }
 
-    public class SampleEventHandler : AbstractMessageEventHandler
+    public class SampleEventHandler : IMessageEventHandler
     {
-        public override void OnMessage(MessageEvent messageEvent)
+        public void OnMessage(CloudEvent messageEvent)
         {
             if (messageEvent is SampleEvent e)
             {
+                Thread.Sleep(1000);
                 Console.WriteLine(e.ApplicationNumber + " " + e.UUID);
-                Console.WriteLine("Holder UUID " + (MessageEventHolder.MessageEvent.Value as SampleEvent).UUID);
             }
         }
     }
 
-    [Kind("application-visited")]
-    public class SampleEvent : MessageEvent
+    [CloudEventDefinition("offer.application.visited.v2", "application/json")]
+    public class SampleEvent : CloudEvent
     {
         public string ApplicationNumber { get; set; }
         public string UUID { get; set; }

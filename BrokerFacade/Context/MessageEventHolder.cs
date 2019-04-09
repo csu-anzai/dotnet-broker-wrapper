@@ -8,6 +8,6 @@ namespace BrokerFacade.Context
 {
     public class MessageEventHolder
     {
-        public static AsyncLocal<MessageEvent> MessageEvent = new AsyncLocal<MessageEvent>();
+        public static AsyncLocal<CloudEvent> MessageEvent = new AsyncLocal<CloudEvent>();
     }
 }

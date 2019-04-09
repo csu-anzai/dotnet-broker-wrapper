@@ -1,4 +1,5 @@
 ﻿using BrokerFacade.Abstractions;
+using BrokerFacade.Interfaces;
 using BrokerFacade.Model;
 using BrokerFacade.NATS.Model;
 using BrokerFacade.Serialization;
@@ -21,9 +22,7 @@ namespace BrokerFacade.NATS
         private IStanConnection Connection;
         private readonly ConcurrentList<ActiveSubscription> activeSubscriptions = new ConcurrentList<ActiveSubscription>();
         private readonly ConcurrentList<BrokerFacade.Model.Subscription> subscriptionRequests = new ConcurrentList<BrokerFacade.Model.Subscription>();
-        private static object publishLock = new object();
-
-        public override event ConnectionState Connected;
+        public override event ConnectionState Connected ;
         public override event ConnectionState ConnectionLost;
         public override event ConnectionState ReconnectionStarted;
 
@@ -58,9 +57,14 @@ namespace BrokerFacade.NATS
                 opts.MaxPingsOut = 2;
                 opts.DisconnectedEventHandler += (sender, args) =>
                 {
-                    ConnectionLost();
-                    ReconnectionStarted();
+                    
+                    ConnectionLost?.Invoke();
+                    ReconnectionStarted?.Invoke();
                     Reconnect();
+                };
+                opts.AsyncErrorEventHandler += (sender, args) =>
+                {
+                    Log.Information("Error async");
                 };
                 var splittedServers = Hostname.Split(",");
                 var ports = Port.Split(",");
@@ -77,7 +81,7 @@ namespace BrokerFacade.NATS
                 Connection = stanCf.CreateConnection("test-cluster", ClientId, options);
                 ConnectionEstablished = true;
                 Log.Information("Broker connected");
-                Connected();
+                Connected?.Invoke();
                 OnConnect();
             }
             catch (Exception e)
@@ -97,13 +101,13 @@ namespace BrokerFacade.NATS
         }
 
 
-        private BrokerFacade.Model.Subscription SubscribeInternal(string topic, string subscriptionName, AbstractMessageEventHandler handler, bool durable)
+        private BrokerFacade.Model.Subscription SubscribeInternal(string topic, string subscriptionName, IMessageEventHandler handler, bool durable)
         {
-            EventHandler<StanMsgHandlerArgs> eh = (sender, args) =>
+            void eh(object sender, StanMsgHandlerArgs args)
             {
                 var body = Encoding.UTF8.GetString(args.Message.Data);
                 var bodyObj = JObject.Parse(body);
-                if (bodyObj.ContainsKey("kind"))
+                if (bodyObj.ContainsKey("type"))
                 {
                     Dictionary<string, object> headerValues = new Dictionary<string, object>();
                     foreach (JProperty property in bodyObj.Properties())
@@ -118,12 +122,11 @@ namespace BrokerFacade.NATS
                         }
                     }
                     var obj = bodyObj["data"] != null ? bodyObj["data"].ToString() : "{}";
-                    MessageEvent eventMsg = MessageEventSerializer.GetEventObject(obj, headerValues);
-                    eventMsg.Topic = topic;
-                    handler.OnMessageInternal(eventMsg);
+                    CloudEvent eventMsg = MessageEventSerializer.GetEventObject(obj, headerValues);
+                    handler.OnMessage(eventMsg);
                     args.Message.Ack();
                 }
-            };
+            }
             IStanSubscription subscription = null;
 
             var opts = StanSubscriptionOptions.GetDefaultOptions();
@@ -145,20 +148,21 @@ namespace BrokerFacade.NATS
             return new BrokerFacade.Model.Subscription { Handler = handler, Topic = topic };
         }
 
-        protected override void PublishInternal(string topic, MessageEvent messageEvent)
+        protected override void PublishInternal(string topic, CloudEvent messageEvent)
         {
             var message = MessageEventSerializer.GetMessageEventHeaders(messageEvent);
+            message.Add("data", messageEvent);
             //  message.Add("data", messageEvent);
             var msg = MessageEventSerializer.SerializeCustomEventBody(message);
             Connection.Publish(topic, Encoding.UTF8.GetBytes(msg));
         }
 
-        public override BrokerFacade.Model.Subscription Subscribe(string topic, string subscriptionName, bool durable, AbstractMessageEventHandler handler)
+        public override BrokerFacade.Model.Subscription Subscribe(string topic, string subscriptionName, bool durable, IMessageEventHandler handler)
         {
             return SubscribeInternal(topic, subscriptionName, handler, durable);
         }
 
-        public override BrokerFacade.Model.Subscription Subscribe(string topic, string subscriptionName, AbstractMessageEventHandler handler)
+        public override BrokerFacade.Model.Subscription Subscribe(string topic, string subscriptionName, IMessageEventHandler handler)
         {
             return SubscribeInternal(topic, subscriptionName, handler, true);
         }

@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "BrokerFacade": {
+      "commandName": "Project",
+      "commandLineArgs": "send sample clienta"
+    }
+  }
+}

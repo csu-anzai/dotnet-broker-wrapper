@@ -2,6 +2,7 @@
 using BrokerFacade.Model;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Serialization;
 using SerializationUtils.Serialization;
 using System;
 using System.Collections.Generic;
@@ -11,6 +12,18 @@ using System.Reflection;
 
 namespace BrokerFacade.Serialization
 {
+    public class LowercaseContractResolver : DefaultContractResolver
+    {
+
+        // Using an explicit static constructor enables lazy initialization.
+        static LowercaseContractResolver() { Instance = new LowercaseContractResolver(); }
+        public static LowercaseContractResolver Instance { get; private set; }
+
+        protected override string ResolvePropertyName(string propertyName)
+        {
+            return propertyName.ToLower();
+        }
+    }
     public class MessageEventSerializer
     {
 
@@ -25,43 +38,52 @@ namespace BrokerFacade.Serialization
 
         private static readonly JsonSerializerSettings settingsWithHeaders = new JsonSerializerSettings
         {
-            ContractResolver = KebabCasePropertyNameResolver.Instance,
+            ContractResolver = LowercaseContractResolver.Instance,
             Converters =
             {
                 new Newtonsoft.Json.Converters.StringEnumConverter()
             }
         };
 
-        public static Dictionary<string, object> GetMessageEventHeaders(MessageEvent messageEvent)
+        public static Dictionary<string, object> GetMessageEventHeaders(CloudEvent messageEvent)
         {
             Dictionary<string, object> headers = new Dictionary<string, object>();
             var listProps = messageEvent.GetType().GetProperties()
                 .Where(x => x.GetCustomAttribute(typeof(Header)) != null).ToList();
 
+            Dictionary<string, object> headersDefinition = new Dictionary<string, object>();
+            var listPropsheadersDefinition = messageEvent.CloudEventDefinition.GetType().GetProperties()
+                .Where(x => x.GetCustomAttribute(typeof(Header)) != null).ToList();
             foreach (PropertyInfo property in listProps)
             {
                 var value = property.GetValue(messageEvent);
                 // TODO: Should header be serialized to Kebab case or not ?
                 var key = property.Name;
-                headers.Add(key, value);
+                headers.Add(key.ToLower(), value);
             }
-            headers.Add("kind", messageEvent.Kind);
+            foreach (PropertyInfo property in listPropsheadersDefinition)
+            {
+                var value = property.GetValue(messageEvent.CloudEventDefinition);
+                // TODO: Should header be serialized to Kebab case or not ?
+                var key = property.Name;
+                headers.Add(key.ToLower(), value);
+            }
             return headers;
         }
 
-        public static string SerializeEventBody(MessageEvent messageEvent)
+        public static string SerializeEventBody(CloudEvent messageEvent)
         {
-            return JsonConvert.SerializeObject(messageEvent, typeof(MessageEvent), settingsNoHeaders);
+            return JsonConvert.SerializeObject(messageEvent, typeof(CloudEvent), settingsNoHeaders);
         }
 
         public static string SerializeCustomEventBody(object obj)
         {
             return JsonConvert.SerializeObject(obj, settingsNoHeaders);
         }
-        public static MessageEvent GetEventObject(string messageText, Dictionary<string, object> headers)
+        public static CloudEvent GetEventObject(string messageText, Dictionary<string, object> headers)
         {
-            string kind = headers.ContainsKey("kind") ? headers["kind"].ToString() : null;
-            kind = (kind == null) ? JObject.Parse(messageText)["kind"]?.ToString() : kind;
+            string kind = headers.ContainsKey("type") ? headers["type"].ToString() : null;
+            kind = kind ?? JObject.Parse(messageText)["type"]?.ToString();
             if (kind == null)
             {
                 return null;
@@ -70,15 +92,15 @@ namespace BrokerFacade.Serialization
             var kindObjects = AppDomain.CurrentDomain.GetAssemblies()
                     .SelectMany(t => t.GetTypes())
                     .Where(t => t.IsClass &&
-                                t.IsSubclassOf(typeof(MessageEvent)) &&
-                                t.GetCustomAttribute<Kind>() != null).ToList();
+                                t.IsSubclassOf(typeof(CloudEvent)) &&
+                                t.GetCustomAttribute<CloudEventDefinition>() != null).ToList();
 
             // Matching event kind
             Type kindObject = null;
             foreach (Type obj in kindObjects)
             {
-                var testKindObject = obj.GetCustomAttribute<Kind>();
-                if (testKindObject != null && testKindObject.MessageKind.Equals(kind))
+                var testKindObject = obj.GetCustomAttribute<CloudEventDefinition>();
+                if (testKindObject != null && testKindObject.Type.Equals(kind))
                 {
                     kindObject = obj;
                 }
@@ -93,7 +115,7 @@ namespace BrokerFacade.Serialization
 
             // Deserialize headers
             AddCustomHeaders(messageObject, headers);
-            return (MessageEvent)messageObject;
+            return (CloudEvent)messageObject;
         }
 
         private static void AddCustomHeaders(object messageObject, Dictionary<string, object> headers)
@@ -102,14 +124,15 @@ namespace BrokerFacade.Serialization
               .Where(x => x.GetCustomAttribute(typeof(Header)) != null).ToList();
             foreach (PropertyInfo property in listProps)
             {
-                var kebabName = CaseUtil.ToKebabCase(property.Name);
-                // Support Kebab and Pascal case properties
-                var valueToken = (headers.ContainsKey(kebabName)) ? headers[kebabName] : null;
-                valueToken = (headers.ContainsKey(property.Name)) ? headers[property.Name] : valueToken;
+                var lowerName = property.Name.ToLower();
+                var valueToken = (headers.ContainsKey(lowerName)) ? headers[lowerName] : null;
                 if (valueToken != null)
                 {
-                    // TODO: Type here can be simular so this must be tested
-                    if (!property.Name.ToLower().Equals("kind"))
+                    if (property.PropertyType.Name.Equals("DateTime"))
+                    {
+                        property.SetValue(messageObject, DateTime.Parse(valueToken.ToString()));
+                    }
+                    else
                     {
                         property.SetValue(messageObject, valueToken);
                     }

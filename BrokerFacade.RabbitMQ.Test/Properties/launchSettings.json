@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "BrokerFacade.RabbitMQ.Test": {
+      "commandName": "Project",
+      "commandLineArgs": "sub1 sample clientc"
+    }
+  }
+}

@@ -3,6 +3,7 @@ using BrokerFacade.Attributes;
 using BrokerFacade.Context;
 using BrokerFacade.Interfaces;
 using BrokerFacade.Model;
+using Serilog;
 using System;
 using System.Threading;
 
@@ -18,6 +19,8 @@ namespace BrokerFacade.NATS.Test
 
         public Program(string[] args)
         {
+            Log.Logger = new LoggerConfiguration()
+                .WriteTo.Console().CreateLogger();
             var clientId = "";
             var topic = "sample";
             if (args.Length > 1)
@@ -29,7 +32,7 @@ namespace BrokerFacade.NATS.Test
                 clientId = args[2];
             }
             var eventBus = new BrokerFacadeNATS("localhost", "4222", "ruser", "T0pS3cr3t", clientId);
-
+            eventBus.Connect();
             if (args.Length > 0 && args[0] == "send")
             {
                 while (true)
@@ -51,24 +54,24 @@ namespace BrokerFacade.NATS.Test
         }
     }
 
-    public class SampleEventHandler : AbstractMessageEventHandler
+    public class SampleEventHandler : IMessageEventHandler
     {
-        public override void OnMessage(MessageEvent messageEvent)
+        public void OnMessage(CloudEvent messageEvent)
         {
             if (messageEvent is SampleEvent e)
             {
-                Thread.Sleep(1000);
                 Console.WriteLine(e.ApplicationNumber + " " + e.UUID);
-                Console.WriteLine("Holder UUID " + (MessageEventHolder.MessageEvent.Value as SampleEvent).UUID);
             }
         }
     }
-
-    [Kind("application-visited")]
-    public class SampleEvent : MessageEvent
+    [CloudEventDefinition("offer.application.visited.v2", "application/json")]
+    public class SampleEvent : CloudEvent
     {
+        public SampleEvent() : base()
+        {
+            Source = "/offer/application/visited";
+        }
         public string ApplicationNumber { get; set; }
-        [Header]
         public string UUID { get; set; }
     }
 }

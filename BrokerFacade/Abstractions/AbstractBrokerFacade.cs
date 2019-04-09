@@ -48,8 +48,8 @@ namespace BrokerFacade.Abstractions
             ClientId = clientId;
         }
 
-        public abstract Subscription Subscribe(string topic, string subscriptionName, AbstractMessageEventHandler handler);
-        public abstract Subscription Subscribe(string topic, string subscriptionName, bool durable, AbstractMessageEventHandler handler);
+        public abstract Subscription Subscribe(string topic, string subscriptionName, IMessageEventHandler handler);
+        public abstract Subscription Subscribe(string topic, string subscriptionName, bool durable, IMessageEventHandler handler);
 
 
         public void Connect()
@@ -67,22 +67,28 @@ namespace BrokerFacade.Abstractions
             var connectionAttempts = 0;
             if (waitArgument == -1 || waitArgument > 0)
             {
-                try
+                while (!ConnectionEstablished)
                 {
-                    while (!ConnectionEstablished)
+                    try
                     {
                         ConnectInternal();
-                        Thread.Sleep(ReconnectTimeout);
                     }
-                }
-                catch (Exception e)
-                {
-                    connectionAttempts++;
-                    ConnectionFailed();
-                    ConnectionEstablished = false;
-                    if (waitArgument != -1 && connectionAttempts == waitArgument)
+                    catch (Exception e)
                     {
-                        throw e;
+                        connectionAttempts++;
+                        ConnectionFailed?.Invoke();
+                        ConnectionEstablished = false;
+                        if (waitArgument != -1 && connectionAttempts == waitArgument)
+                        {
+                            throw e;
+                        }
+                    }
+                    finally
+                    {
+                        if (!ConnectionEstablished)
+                        {
+                            Thread.Sleep(ReconnectTimeout);
+                        }
                     }
                 }
             }
@@ -92,7 +98,7 @@ namespace BrokerFacade.Abstractions
             }
         }
 
-        public void Publish(string topic, MessageEvent messageEvent)
+        public void Publish(string topic, CloudEvent messageEvent)
         {
             if (SendRetries > 0)
             {
@@ -101,6 +107,7 @@ namespace BrokerFacade.Abstractions
                     try
                     {
                         PublishInternal(topic, messageEvent);
+                        break;
                     }
                     catch (Exception e)
                     {
@@ -122,7 +129,7 @@ namespace BrokerFacade.Abstractions
         }
 
         protected abstract void ConnectInternal();
-        protected abstract void PublishInternal(string topic, MessageEvent messageEvent);
+        protected abstract void PublishInternal(string topic, CloudEvent messageEvent);
         public abstract void Unsubscribe(Subscription subscription);
 
         public bool IsConnected()

@@ -4,6 +4,6 @@ namespace BrokerFacade.Interfaces
 {
     public interface IMessageEventHandler
     {
-        void OnMessage(MessageEvent messageEvent);
+        void OnMessage(CloudEvent messageEvent);
     }
 }

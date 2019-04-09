@@ -7,6 +7,6 @@ namespace BrokerFacade.Model
     public class PublishRequest
     {
         public string Topic { get; set; }
-        public MessageEvent MessageEvent { get; set; }
+        public CloudEvent CloudEvent { get; set; }
     }
 }

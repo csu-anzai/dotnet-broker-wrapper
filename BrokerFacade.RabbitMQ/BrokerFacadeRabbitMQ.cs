@@ -1,4 +1,5 @@
 ﻿using BrokerFacade.Abstractions;
+using BrokerFacade.Interfaces;
 using BrokerFacade.Model;
 using BrokerFacade.RabbitMQ.Model;
 using BrokerFacade.Serialization;
@@ -19,7 +20,6 @@ namespace BrokerFacade.RabbitMQ
     public class BrokerFacadeRabbitMQ : AbstractBrokerFacade
     {
         private IConnection connection;
-        private static object publishLock = new object();
         private readonly Dictionary<string, IModel> senderLinks = new Dictionary<string, IModel>();
         private readonly ConcurrentList<ActiveSubscription> activeSubscriptions = new ConcurrentList<ActiveSubscription>();
 
@@ -30,7 +30,6 @@ namespace BrokerFacade.RabbitMQ
         public BrokerFacadeRabbitMQ(string hostname, string port, string username, string password, string clientId) : base(hostname, port, username, password, clientId)
         {
         }
-
 
         protected override void ConnectInternal()
         {
@@ -51,6 +50,7 @@ namespace BrokerFacade.RabbitMQ
                 connection.ConnectionShutdown += Connection_ConnectionShutdown;
                 ConnectionEstablished = true;
                 Log.Information("Broker connected");
+                Connected?.Invoke();
             }
             catch
             {
@@ -62,15 +62,19 @@ namespace BrokerFacade.RabbitMQ
         private void Connection_ConnectionRecoveryError(object sender, ConnectionRecoveryErrorEventArgs e)
         {
             Log.Information("Broker disconnected");
+            ConnectionLost?.Invoke();
             ConnectionEstablished = false;
             Log.Information("Broker reconnecting");
+            ReconnectionStarted?.Invoke();
         }
 
         private void Connection_ConnectionShutdown(object sender, ShutdownEventArgs e)
         {
             Log.Information("Broker disconnected");
+            ConnectionLost?.Invoke();
             ConnectionEstablished = false;
             Log.Information("Broker reconnecting");
+            ReconnectionStarted?.Invoke();
         }
 
         private void Connection_RecoverySucceeded(object sender, EventArgs e)
@@ -78,9 +82,9 @@ namespace BrokerFacade.RabbitMQ
             ConnectionEstablished = true;
         }
 
-        protected override void PublishInternal(string topic, MessageEvent messageEvent)
+        protected override void PublishInternal(string topic, CloudEvent messageEvent)
         {
-            IModel channel = null;
+            IModel channel;
             if (senderLinks.ContainsKey(topic))
             {
                 channel = senderLinks[topic];
@@ -95,12 +99,24 @@ namespace BrokerFacade.RabbitMQ
             }
             string body = MessageEventSerializer.SerializeEventBody(messageEvent);
             var headers = MessageEventSerializer.GetMessageEventHeaders(messageEvent);
-            BasicProperties properties = new BasicProperties();
-
-            properties.Headers = new Dictionary<string, object>();
+            BasicProperties properties = new BasicProperties
+            {
+                Headers = new Dictionary<string, object>()
+            };
             foreach (KeyValuePair<string, object> entry in headers)
             {
-                properties.Headers.Add(entry.Key, entry.Value);
+                if (entry.Value != null)
+                {
+                    if (entry.Value is DateTime)
+                    {
+                        var value = entry.Value as DateTime?;
+                        properties.Headers.Add(entry.Key, value?.ToString("yyyy-MM-ddTHH:mm:ssZ"));
+                    }
+                    else
+                    {
+                        properties.Headers.Add(entry.Key, entry.Value);
+                    }
+                }
             }
             var bodyBytes = Encoding.UTF8.GetBytes(body);
 
@@ -111,7 +127,7 @@ namespace BrokerFacade.RabbitMQ
 
         }
 
-        private Subscription SubscribeInternal(string topic, string subscriptionName, AbstractMessageEventHandler handler, bool durable)
+        private Subscription SubscribeInternal(string topic, string subscriptionName, IMessageEventHandler handler, bool durable)
         {
             // Use same topic matching as RabbitMQ and ActiveMQ Artemis
             topic = topic.Replace("#", ">");
@@ -130,10 +146,9 @@ namespace BrokerFacade.RabbitMQ
                 var body = ea.Body;
                 var message = Encoding.UTF8.GetString(body);
                 var routingKey = ea.RoutingKey;
-                var headers = ea.BasicProperties.Headers.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-                MessageEvent eventMsg = MessageEventSerializer.GetEventObject(message, headers);
-                eventMsg.Topic = topic;
-                handler.OnMessageInternal(eventMsg);
+                var headers = ea.BasicProperties.Headers.ToDictionary(kvp => kvp.Key, kvp => (kvp.Value is byte[]) ? Encoding.UTF8.GetString(kvp.Value as byte[]) : kvp.Value);
+                CloudEvent eventMsg = MessageEventSerializer.GetEventObject(message, headers);
+                handler.OnMessage(eventMsg);
                 channel.BasicAck(ea.DeliveryTag, false);
             };
             channel.BasicConsume(queue: queueName,
@@ -145,12 +160,12 @@ namespace BrokerFacade.RabbitMQ
             return new Subscription { Handler = handler, Topic = topic };
         }
 
-        public override Subscription Subscribe(string topic, string subscriptionName, bool durable, AbstractMessageEventHandler handler)
+        public override Subscription Subscribe(string topic, string subscriptionName, bool durable, IMessageEventHandler handler)
         {
             return SubscribeInternal(topic, subscriptionName, handler, durable);
         }
 
-        public override Subscription Subscribe(string topic, string subscriptionName, AbstractMessageEventHandler handler)
+        public override Subscription Subscribe(string topic, string subscriptionName, IMessageEventHandler handler)
         {
             return SubscribeInternal(topic, subscriptionName, handler, true);
         }

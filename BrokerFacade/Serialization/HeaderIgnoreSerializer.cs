@@ -20,13 +20,11 @@ namespace BrokerFacade.Serialization
 
         public HeaderIgnoreSerializer()
         {
-            NamingStrategy = new KebabCaseNamingStrategy
-            {
-                ProcessDictionaryKeys = true,
-                OverrideSpecifiedNames = true
-            };
         }
-
+        protected override string ResolvePropertyName(string propertyName)
+        {
+            return propertyName.ToLower();
+        }
         protected override JsonProperty CreateProperty(MemberInfo member, MemberSerialization memberSerialization)
         {
             JsonProperty property = base.CreateProperty(member, memberSerialization);

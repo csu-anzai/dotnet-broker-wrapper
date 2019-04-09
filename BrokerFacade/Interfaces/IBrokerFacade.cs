@@ -5,9 +5,9 @@ namespace BrokerFacade.Interfaces
 {
     public interface IBrokerFacade
     {
-        Subscription Subscribe(string topicMatchExpression, string subscriptionName, AbstractMessageEventHandler handler);
-        Subscription Subscribe(string topicMatchExpression, string subscriptionName, bool durable, AbstractMessageEventHandler handler);
-        void Publish(string topic, MessageEvent messageEvent);
+        Subscription Subscribe(string topicMatchExpression, string subscriptionName, IMessageEventHandler handler);
+        Subscription Subscribe(string topicMatchExpression, string subscriptionName, bool durable, IMessageEventHandler handler);
+        void Publish(string topic, CloudEvent messageEvent);
         void Unsubscribe(Subscription subscription);
         bool IsConnected();
     }

@@ -3,7 +3,7 @@ using Amqp.Framing;
 using Amqp.Types;
 using BrokerFacade.Abstractions;
 using BrokerFacade.ActiveMQ.Model;
-using BrokerFacade.Configuration;
+using BrokerFacade.Interfaces;
 using BrokerFacade.Model;
 using BrokerFacade.Serialization;
 using BrokerFacade.Util;
@@ -53,7 +53,7 @@ namespace BrokerFacade.ActiveMQ
             factory.TCP.ReceiveTimeout = ReceiveTimeout;
             Connection.Closed += Connection_Closed;
             ConnectionEstablished = true;
-            Connected();
+            Connected?.Invoke();
             Log.Information("Broker connected");
             OnConnect();
 
@@ -61,7 +61,7 @@ namespace BrokerFacade.ActiveMQ
 
         private void Connection_Closed(IAmqpObject sender, Error error)
         {
-            ConnectionLost();
+            ConnectionLost?.Invoke();
             foreach (ActiveSubscription request in activeSubscriptions)
             {
                 subscriptionRequests.Add(request);
@@ -72,7 +72,7 @@ namespace BrokerFacade.ActiveMQ
             sendSession = null;
             ConnectionEstablished = false;
             Log.Information("Broker reconnecting");
-            ReconnectionStarted();
+            ReconnectionStarted?.Invoke();
             Reconnect();
         }
 
@@ -87,7 +87,7 @@ namespace BrokerFacade.ActiveMQ
             }
         }
 
-        protected override void PublishInternal(string topic, MessageEvent messageEvent)
+        protected override void PublishInternal(string topic, CloudEvent messageEvent)
         {
             if (sendSession == null)
             {
@@ -122,7 +122,7 @@ namespace BrokerFacade.ActiveMQ
             sender.Send(message);
         }
 
-        private Subscription SubscribeInternal(string topic, string subscriptionName, AbstractMessageEventHandler handler, bool durable)
+        private Subscription SubscribeInternal(string topic, string subscriptionName, IMessageEventHandler handler, bool durable)
         {
             Session session = new Session(Connection);
             Symbol[] capabilities = null;
@@ -143,9 +143,8 @@ namespace BrokerFacade.ActiveMQ
             ReceiverLink receiverLink = new ReceiverLink(session, subscriptionName, target, null);
             receiverLink.Start(linkCredit, (receiver, message) =>
             {
-                MessageEvent eventMsg = MessageEventSerializer.GetEventObject(message.Body.ToString(), GetDictonaryFromMap(message.ApplicationProperties?.Map));
-                eventMsg.Topic = topic;
-                handler.OnMessageInternal(eventMsg);
+                CloudEvent eventMsg = MessageEventSerializer.GetEventObject(message.Body.ToString(), GetDictonaryFromMap(message.ApplicationProperties?.Map));
+                handler.OnMessage(eventMsg);
                 receiver.Accept(message);
             });
             activeSubscriptions.Add(
@@ -154,7 +153,7 @@ namespace BrokerFacade.ActiveMQ
             return new Subscription { Handler = handler, Topic = topic };
         }
 
-        public override Subscription Subscribe(string topic, string subscriptionName, AbstractMessageEventHandler handler)
+        public override Subscription Subscribe(string topic, string subscriptionName, IMessageEventHandler handler)
         {
             return SubscribeInternal(topic, subscriptionName, handler, true);
         }
@@ -173,7 +172,7 @@ namespace BrokerFacade.ActiveMQ
             return headers;
         }
 
-        public override Subscription Subscribe(string topic, string subscriptionName, bool durable, AbstractMessageEventHandler handler)
+        public override Subscription Subscribe(string topic, string subscriptionName, bool durable, IMessageEventHandler handler)
         {
             return SubscribeInternal(topic, subscriptionName, handler, durable);
         }
