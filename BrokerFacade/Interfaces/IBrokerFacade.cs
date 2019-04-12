@@ -10,5 +10,7 @@ namespace BrokerFacade.Interfaces
         void Publish(string topic, CloudEvent messageEvent);
         void Unsubscribe(Subscription subscription);
         bool IsConnected();
+        void Connect();
+        void Disconnect();
     }
 }

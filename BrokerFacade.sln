@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.28307.168
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.28729.10
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BrokerFacade", "BrokerFacade\BrokerFacade.csproj", "{971327EE-862D-4939-BD31-D33572BE2AFC}"
 EndProject
@@ -13,9 +13,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BrokerFacade.RabbitMQ", "Br
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BrokerFacade.RabbitMQ.Test", "BrokerFacade.RabbitMQ.Test\BrokerFacade.RabbitMQ.Test.csproj", "{990E4CAA-2D11-4FF1-85AC-DD969407E0CE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BrokerFacade.NATS", "BrokerFacade.NATS\BrokerFacade.NATS.csproj", "{898A21CD-80D1-4838-BD28-6B167F9C06C2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BrokerFacade.NATS", "BrokerFacade.NATS\BrokerFacade.NATS.csproj", "{898A21CD-80D1-4838-BD28-6B167F9C06C2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BrokerFacade.NATS.Test", "BrokerFacade.NATS.Test\BrokerFacade.NATS.Test.csproj", "{1C37654A-192A-44F4-BDB5-6793611FA875}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BrokerFacade.NATS.Test", "BrokerFacade.NATS.Test\BrokerFacade.NATS.Test.csproj", "{1C37654A-192A-44F4-BDB5-6793611FA875}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BrokerFacade.Test", "BrokerFacade.Test\BrokerFacade.Test.csproj", "{EAF363C4-D719-4B46-A068-D4792FF40A76}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -51,6 +53,10 @@ Global
 		{1C37654A-192A-44F4-BDB5-6793611FA875}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1C37654A-192A-44F4-BDB5-6793611FA875}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1C37654A-192A-44F4-BDB5-6793611FA875}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EAF363C4-D719-4B46-A068-D4792FF40A76}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EAF363C4-D719-4B46-A068-D4792FF40A76}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EAF363C4-D719-4B46-A068-D4792FF40A76}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EAF363C4-D719-4B46-A068-D4792FF40A76}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

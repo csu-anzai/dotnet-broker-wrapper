@@ -47,10 +47,10 @@ namespace BrokerFacade.ActiveMQ
         protected override void ConnectInternal()
         {
             ConnectionFactory factory = new ConnectionFactory();
-            Connection = factory.CreateAsync(new Address(connectionPath)).Result;
             factory.AMQP.ContainerId = ClientId;
             factory.TCP.SendTimeout = SendTimeout;
             factory.TCP.ReceiveTimeout = ReceiveTimeout;
+            Connection = factory.CreateAsync(new Address(connectionPath)).Result;
             Connection.Closed += Connection_Closed;
             ConnectionEstablished = true;
             Connected?.Invoke();
@@ -61,9 +61,28 @@ namespace BrokerFacade.ActiveMQ
 
         private void Connection_Closed(IAmqpObject sender, Error error)
         {
+            Console.WriteLine(error);
             ConnectionLost?.Invoke();
             foreach (ActiveSubscription request in activeSubscriptions)
             {
+                try
+                {
+                    this.Connection.Close();
+                }
+                catch { }
+                try
+                {
+                    foreach (KeyValuePair<string, SenderLink> link in senderLinks)
+                    {
+                        link.Value.Close();
+                    }
+                }
+                catch { }
+                try
+                {
+                    request.Link.Close();
+                }
+                catch { }
                 subscriptionRequests.Add(request);
             }
             Log.Information("Broker disconnected");
@@ -82,7 +101,7 @@ namespace BrokerFacade.ActiveMQ
             // Add pending subscriptions
             foreach (Subscription request in subscriptionRequests.ToList())
             {
-                Subscribe(request.Topic, request.SubscriptionName, request.Handler);
+                Subscribe(request.Topic, request.SubscriptionName, request.Durable, request.Handler);
                 subscriptionRequests.Remove(request);
             }
         }
@@ -148,7 +167,7 @@ namespace BrokerFacade.ActiveMQ
                 receiver.Accept(message);
             });
             activeSubscriptions.Add(
-                new ActiveSubscription { Topic = topic, SubscriptionName = topic + "_" + subscriptionName, Handler = handler, Link = receiverLink }
+                new ActiveSubscription { Topic = topic, SubscriptionName = subscriptionName, Handler = handler, Link = receiverLink }
             );
             return new Subscription { Handler = handler, Topic = topic };
         }
@@ -185,6 +204,12 @@ namespace BrokerFacade.ActiveMQ
                 active.Link.Close();
                 activeSubscriptions.Remove(active);
             }
+        }
+
+        public override void Disconnect()
+        {
+            Connection.Closed -= Connection_Closed;
+            Connection.Close();
         }
     }
 }

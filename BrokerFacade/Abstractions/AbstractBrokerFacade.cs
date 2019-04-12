@@ -136,5 +136,7 @@ namespace BrokerFacade.Abstractions
         {
             return ConnectionEstablished;
         }
+
+        public abstract void Disconnect();
     }
 }

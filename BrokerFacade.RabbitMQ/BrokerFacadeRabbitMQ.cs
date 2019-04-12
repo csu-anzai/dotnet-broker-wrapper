@@ -180,5 +180,12 @@ namespace BrokerFacade.RabbitMQ
             }
         }
 
+        public override void Disconnect()
+        {
+            connection.RecoverySucceeded -= Connection_RecoverySucceeded;
+            connection.ConnectionRecoveryError -= Connection_ConnectionRecoveryError;
+            connection.ConnectionShutdown -= Connection_ConnectionShutdown;
+            connection.Close();
+        }
     }
 }

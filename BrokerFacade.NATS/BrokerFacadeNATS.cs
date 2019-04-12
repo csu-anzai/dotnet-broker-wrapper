@@ -42,6 +42,14 @@ namespace BrokerFacade.NATS
             base.Reconnect();
         }
 
+        protected void DisconnectEventHandler(object sender, ConnEventArgs connEventArgs)
+        {
+
+            ConnectionLost?.Invoke();
+            ReconnectionStarted?.Invoke();
+            Disconnect();
+            Reconnect();
+        }
         protected override void ConnectInternal()
         {
             try
@@ -55,13 +63,7 @@ namespace BrokerFacade.NATS
                 opts.AllowReconnect = false;
                 opts.PingInterval = 1000;
                 opts.MaxPingsOut = 2;
-                opts.DisconnectedEventHandler += (sender, args) =>
-                {
-                    
-                    ConnectionLost?.Invoke();
-                    ReconnectionStarted?.Invoke();
-                    Reconnect();
-                };
+                opts.DisconnectedEventHandler += DisconnectEventHandler;
                 opts.AsyncErrorEventHandler += (sender, args) =>
                 {
                     Log.Information("Error async");
@@ -180,6 +182,18 @@ namespace BrokerFacade.NATS
             if (inactive != null)
             {
                 subscriptionRequests.Remove(inactive);
+            }
+        }
+
+        public override void Disconnect()
+        {
+            Connection.NATSConnection.Opts.DisconnectedEventHandler -= DisconnectEventHandler;
+            try
+            {
+                Connection.NATSConnection.Close();
+                Connection.Close();
+            }
+            catch {
             }
         }
     }
