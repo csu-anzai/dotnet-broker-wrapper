@@ -82,7 +82,7 @@ namespace EventBusActiveMQImpl
             {
                 this.OnMessageReceived += (async (msg, topic) =>
                 {
-                    if (topic.Equals(eventName))
+                    if (topic.Equals(eventName) || topic.Equals("topic://" + eventName))
                     {
                         await integrationEventHandler.Handle((T)msg);
                     }

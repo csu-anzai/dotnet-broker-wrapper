@@ -20,14 +20,11 @@ namespace EventBusActiveMQTest
         [Fact]
         public void PubSub()
         {
-            IEventBus bus = new EventBusActiveMQ("localhost:61616", "admin", "admin");
-            bus.Subscribe("notifications", new MessageEventHandler());
+            IEventBus bus = new EventBusActiveMQ("172.16.89.235:30745", "admin", "admin");
+            bus.Subscribe("content", new MessageEventHandler());
             Debug.WriteLine("Subscribed.");
-            MessageEvent messageEvent = new MessageEvent("notifications", "This is a text of the message");
-            messageEvent.setStringProperty("name", "John Smith");
-            bus.Publish(messageEvent);
             Debug.WriteLine("Message sent...");
-            //System.Threading.Thread.Sleep(5000);
+            System.Threading.Thread.Sleep(100000);
         }
     }
 }
