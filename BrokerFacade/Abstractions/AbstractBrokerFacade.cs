@@ -1,4 +1,5 @@
 ﻿using BrokerFacade.Abstractions;
+using BrokerFacade.Context;
 using BrokerFacade.Interfaces;
 using BrokerFacade.Model;
 using System;
@@ -126,6 +127,11 @@ namespace BrokerFacade.Abstractions
             {
                 PublishInternal(topic, messageEvent);
             }
+        }
+
+        protected void OnMessage(IMessageEventHandler handler, CloudEvent eventMsg) {
+            MessageEventHolder.MessageEvent.Value = eventMsg;
+            handler.OnMessage(eventMsg);
         }
 
         protected abstract void ConnectInternal();

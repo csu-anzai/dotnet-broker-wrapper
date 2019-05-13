@@ -148,7 +148,7 @@ namespace BrokerFacade.RabbitMQ
                 var routingKey = ea.RoutingKey;
                 var headers = ea.BasicProperties.Headers.ToDictionary(kvp => kvp.Key, kvp => (kvp.Value is byte[]) ? Encoding.UTF8.GetString(kvp.Value as byte[]) : kvp.Value);
                 CloudEvent eventMsg = MessageEventSerializer.GetEventObject(message, headers);
-                handler.OnMessage(eventMsg);
+                OnMessage(handler, eventMsg);
                 channel.BasicAck(ea.DeliveryTag, false);
             };
             channel.BasicConsume(queue: queueName,

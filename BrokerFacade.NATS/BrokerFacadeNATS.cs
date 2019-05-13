@@ -125,7 +125,7 @@ namespace BrokerFacade.NATS
                     }
                     var obj = bodyObj["data"] != null ? bodyObj["data"].ToString() : "{}";
                     CloudEvent eventMsg = MessageEventSerializer.GetEventObject(obj, headerValues);
-                    handler.OnMessage(eventMsg);
+                    OnMessage(handler, eventMsg);
                     args.Message.Ack();
                 }
             }

@@ -27,8 +27,6 @@ namespace BrokerFacade.ActiveMQ
         private readonly ConcurrentList<ActiveSubscription> activeSubscriptions = new ConcurrentList<ActiveSubscription>();
         private readonly Dictionary<string, SenderLink> senderLinks = new Dictionary<string, SenderLink>();
 
-        private static object publishLock = new object();
-
         public override event ConnectionState Connected;
         public override event ConnectionState ConnectionLost;
         public override event ConnectionState ReconnectionStarted;
@@ -163,7 +161,7 @@ namespace BrokerFacade.ActiveMQ
             receiverLink.Start(linkCredit, (receiver, message) =>
             {
                 CloudEvent eventMsg = MessageEventSerializer.GetEventObject(message.Body.ToString(), GetDictonaryFromMap(message.ApplicationProperties?.Map));
-                handler.OnMessage(eventMsg);
+                OnMessage(handler, eventMsg);
                 receiver.Accept(message);
             });
             activeSubscriptions.Add(

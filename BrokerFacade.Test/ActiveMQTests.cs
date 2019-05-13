@@ -183,7 +183,7 @@ namespace Tests
                     envs.Add("ARTEMIS_PASSWORD=admin");
                     envs.Add("ARTEMIS_USERNAME=admin");
                     Port = "45411";
-                    ports.Add("8161/tcp", "8161/tcp");
+                    //  ports.Add("8161/tcp", "8161/tcp");
                     ports.Add("5672/tcp", Port + "/tcp");
                     Id = TestUtil.StartContainer(client, "vromero/activemq-artemis:2.6.3-alpine", envs, ports);
                     break;

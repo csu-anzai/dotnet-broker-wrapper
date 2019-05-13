@@ -2,7 +2,7 @@
   "profiles": {
     "BrokerFacade.ActiveMQ.Test": {
       "commandName": "Project",
-      "commandLineArgs": "sub1 sample3 clientc"
+      "commandLineArgs": "send sample3"
     }
   }
 }

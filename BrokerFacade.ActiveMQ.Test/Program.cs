@@ -62,7 +62,7 @@ namespace BrokerFacade.ActiveMQ.Test
             if (messageEvent is SampleEvent e)
             {
                 Console.WriteLine(e.ApplicationNumber + " " + e.UUID);
-                // Console.WriteLine("Holder UUID " + (MessageEventHolder.MessageEvent.Value as SampleEvent).UUID);
+                Console.WriteLine("Holder UUID " + (MessageEventHolder.MessageEvent.Value as SampleEvent).UUID);
             }
         }
     }
