@@ -16,6 +16,7 @@ namespace BrokerFacade.Attributes
         public CloudEventDefinition(string type)
         {
             this.Type = type;
+            ContentType = "application/json";
         }
 
         public CloudEventDefinition(string type,  string contentType) : this(type)

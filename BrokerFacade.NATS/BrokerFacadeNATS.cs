@@ -22,7 +22,7 @@ namespace BrokerFacade.NATS
         private IStanConnection Connection;
         private readonly ConcurrentList<ActiveSubscription> activeSubscriptions = new ConcurrentList<ActiveSubscription>();
         private readonly ConcurrentList<BrokerFacade.Model.Subscription> subscriptionRequests = new ConcurrentList<BrokerFacade.Model.Subscription>();
-        public override event ConnectionState Connected ;
+        public override event ConnectionState Connected;
         public override event ConnectionState ConnectionLost;
         public override event ConnectionState ReconnectionStarted;
 
@@ -42,14 +42,6 @@ namespace BrokerFacade.NATS
             base.Reconnect();
         }
 
-        protected void DisconnectEventHandler(object sender, ConnEventArgs connEventArgs)
-        {
-
-            ConnectionLost?.Invoke();
-            ReconnectionStarted?.Invoke();
-            Disconnect();
-            Reconnect();
-        }
         protected override void ConnectInternal()
         {
             try
@@ -92,6 +84,14 @@ namespace BrokerFacade.NATS
             }
         }
 
+        protected void DisconnectEventHandler(object sender, ConnEventArgs connEventArgs)
+        {
+
+            ConnectionLost?.Invoke();
+            ReconnectionStarted?.Invoke();
+            Disconnect();
+            Reconnect();
+        }
         public void OnConnect()
         {
             // Add pending subscriptions
