@@ -17,7 +17,12 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BrokerFacade.NATS", "Broker
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BrokerFacade.NATS.Test", "BrokerFacade.NATS.Test\BrokerFacade.NATS.Test.csproj", "{1C37654A-192A-44F4-BDB5-6793611FA875}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BrokerFacade.Test", "BrokerFacade.Test\BrokerFacade.Test.csproj", "{EAF363C4-D719-4B46-A068-D4792FF40A76}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BrokerFacade.Test", "BrokerFacade.Test\BrokerFacade.Test.csproj", "{EAF363C4-D719-4B46-A068-D4792FF40A76}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{E3E40AA7-D176-413C-84A4-7183105C788D}"
+	ProjectSection(SolutionItems) = preProject
+		ci.yaml = ci.yaml
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

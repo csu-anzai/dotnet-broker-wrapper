@@ -25,7 +25,7 @@ steps:
 
 - name: build_broker_facade
   pull: default
-  image: microsoft/aspnetcore-build
+  image: microsoft/dotnet:2.2-sdk
   commands:
   - cd BrokerFacade
   - dotnet build
@@ -38,7 +38,7 @@ steps:
 
 - name: build_broker_facade_active_mq
   pull: default
-  image: microsoft/aspnetcore-build
+  image: microsoft/dotnet:2.2-sdk
   commands:
   - cd BrokerFacade.ActiveMQ
   - dotnet build
@@ -51,7 +51,7 @@ steps:
 
 - name: build_broker_facade_nats
   pull: default
-  image: microsoft/aspnetcore-build
+  image: microsoft/dotnet:2.2-sdk
   commands:
   - cd BrokerFacade.NATS
   - dotnet build
@@ -64,7 +64,7 @@ steps:
 
 - name: build_broker_facade_rabbit_mq
   pull: default
-  image: microsoft/aspnetcore-build
+  image: microsoft/dotnet:2.2-sdk
   commands:
   - cd BrokerFacade.RabbitMQ
   - dotnet build
@@ -77,7 +77,7 @@ steps:
 
 - name: tag_latest_broker_facade
   pull: default
-  image: microsoft/aspnetcore-build
+  image: microsoft/dotnet:2.2-sdk
   commands:
   - cd BrokerFacade
   - dotnet restore
@@ -88,7 +88,7 @@ steps:
 
 - name: tag_latest_broker_facade_active_mq
   pull: default
-  image: microsoft/aspnetcore-build
+  image: microsoft/dotnet:2.2-sdk
   commands:
   - cd BrokerFacade.ActiveMQ
   - dotnet setversion $(head -n 1 ../.version)
@@ -98,7 +98,7 @@ steps:
 
 - name: tag_latest_broker_facade_nats
   pull: default
-  image: microsoft/aspnetcore-build
+  image: microsoft/dotnet:2.2-sdk
   commands:
   - cd BrokerFacade.NATS
   - dotnet setversion $(head -n 1 ../.version)
@@ -108,7 +108,7 @@ steps:
 
 - name: tag_latest_broker_facade_rabbit_mq
   pull: default
-  image: microsoft/aspnetcore-build
+  image: microsoft/dotnet:2.2-sdk
   commands:
   - cd BrokerFacade.RabbitMQ
   - dotnet setversion $(head -n 1 ../.version)
