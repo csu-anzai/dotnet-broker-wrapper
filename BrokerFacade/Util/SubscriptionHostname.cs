@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 namespace BrokerFacade.Util
 {
@@ -31,8 +29,7 @@ namespace BrokerFacade.Util
 
         private static string GetRandomString()
         {
-            var randomString = RandomString(8);
-            return randomString;
+            return RandomString(8);
         }
 
         private static string RandomString(int length)

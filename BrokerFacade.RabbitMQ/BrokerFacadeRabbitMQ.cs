@@ -3,7 +3,6 @@ using BrokerFacade.Interfaces;
 using BrokerFacade.Model;
 using BrokerFacade.RabbitMQ.Model;
 using BrokerFacade.Serialization;
-using BrokerFacade.Util;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using RabbitMQ.Client.Framing;
@@ -13,7 +12,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace BrokerFacade.RabbitMQ
 {
@@ -127,7 +125,7 @@ namespace BrokerFacade.RabbitMQ
 
         }
 
-        private Subscription SubscribeInternal(string topic, string subscriptionName, IMessageEventHandler handler, bool durable)
+        private Subscription SubscribeInternal(string topic, string subscriptionName, bool durable, IMessageEventHandler handler)
         {
             // Use same topic matching as RabbitMQ and ActiveMQ Artemis
             topic = topic.Replace("#", ">");
@@ -160,14 +158,14 @@ namespace BrokerFacade.RabbitMQ
             return new Subscription { Handler = handler, Topic = topic };
         }
 
-        public override Subscription Subscribe(string topic, string subscriptionName, bool durable, IMessageEventHandler handler)
-        {
-            return SubscribeInternal(topic, subscriptionName, handler, durable);
-        }
-
         public override Subscription Subscribe(string topic, string subscriptionName, IMessageEventHandler handler)
         {
-            return SubscribeInternal(topic, subscriptionName, handler, true);
+            return SubscribeInternal(topic, subscriptionName, true, handler);
+        }
+
+        public override Subscription Subscribe(string topic, string subscriptionName, bool durable, IMessageEventHandler handler)
+        {
+            return SubscribeInternal(topic, subscriptionName, durable, handler);
         }
 
         public override void Unsubscribe(Subscription subscription)

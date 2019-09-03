@@ -3,7 +3,6 @@ using BrokerFacade.Interfaces;
 using BrokerFacade.Model;
 using BrokerFacade.NATS.Model;
 using BrokerFacade.Serialization;
-using BrokerFacade.Util;
 using NATS.Client;
 using Newtonsoft.Json.Linq;
 using Serilog;
@@ -13,7 +12,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace BrokerFacade.NATS
 {
@@ -103,7 +101,7 @@ namespace BrokerFacade.NATS
         }
 
 
-        private BrokerFacade.Model.Subscription SubscribeInternal(string topic, string subscriptionName, IMessageEventHandler handler, bool durable)
+        private BrokerFacade.Model.Subscription SubscribeInternal(string topic, string subscriptionName, bool durable, IMessageEventHandler handler)
         {
             void eh(object sender, StanMsgHandlerArgs args)
             {
@@ -159,14 +157,14 @@ namespace BrokerFacade.NATS
             Connection.Publish(topic, Encoding.UTF8.GetBytes(msg));
         }
 
-        public override BrokerFacade.Model.Subscription Subscribe(string topic, string subscriptionName, bool durable, IMessageEventHandler handler)
-        {
-            return SubscribeInternal(topic, subscriptionName, handler, durable);
-        }
-
         public override BrokerFacade.Model.Subscription Subscribe(string topic, string subscriptionName, IMessageEventHandler handler)
         {
-            return SubscribeInternal(topic, subscriptionName, handler, true);
+            return SubscribeInternal(topic, subscriptionName, true, handler);
+        }
+
+        public override BrokerFacade.Model.Subscription Subscribe(string topic, string subscriptionName, bool durable, IMessageEventHandler handler)
+        {
+            return SubscribeInternal(topic, subscriptionName, durable, handler);
         }
 
         public override void Unsubscribe(BrokerFacade.Model.Subscription subscription)

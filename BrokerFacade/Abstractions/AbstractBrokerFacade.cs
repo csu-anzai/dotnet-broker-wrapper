@@ -1,7 +1,7 @@
-﻿using BrokerFacade.Abstractions;
-using BrokerFacade.Context;
+﻿using BrokerFacade.Context;
 using BrokerFacade.Interfaces;
 using BrokerFacade.Model;
+using BrokerFacade.Util;
 using System;
 using System.Threading;
 
@@ -48,7 +48,17 @@ namespace BrokerFacade.Abstractions
             Password = password;
             ClientId = clientId;
         }
+        public Subscription Subscribe(string topic, IMessageEventHandler handler)
+        {
+            var subscriptionName = SubscriptionHostname.GetUniqueSubscription();
+            return Subscribe(topic, subscriptionName, true, handler);
+        }
 
+        public  Subscription Subscribe(string topic, bool durable, IMessageEventHandler handler)
+        {
+            var subscriptionName = SubscriptionHostname.GetUniqueSubscription();
+            return Subscribe(topic, subscriptionName, durable, handler);
+        }
         public abstract Subscription Subscribe(string topic, string subscriptionName, IMessageEventHandler handler);
         public abstract Subscription Subscribe(string topic, string subscriptionName, bool durable, IMessageEventHandler handler);
 

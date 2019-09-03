@@ -6,13 +6,10 @@ using BrokerFacade.ActiveMQ.Model;
 using BrokerFacade.Interfaces;
 using BrokerFacade.Model;
 using BrokerFacade.Serialization;
-using BrokerFacade.Util;
 using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace BrokerFacade.ActiveMQ
 {
@@ -139,7 +136,7 @@ namespace BrokerFacade.ActiveMQ
             sender.Send(message);
         }
 
-        private Subscription SubscribeInternal(string topic, string subscriptionName, IMessageEventHandler handler, bool durable)
+        private Subscription SubscribeInternal(string topic, string subscriptionName, bool durable, IMessageEventHandler handler)
         {
             Session session = new Session(Connection);
             Symbol[] capabilities = null;
@@ -172,7 +169,12 @@ namespace BrokerFacade.ActiveMQ
 
         public override Subscription Subscribe(string topic, string subscriptionName, IMessageEventHandler handler)
         {
-            return SubscribeInternal(topic, subscriptionName, handler, true);
+            return SubscribeInternal(topic, subscriptionName, true, handler);
+        }
+
+        public override Subscription Subscribe(string topic, string subscriptionName, bool durable, IMessageEventHandler handler)
+        {
+            return SubscribeInternal(topic, subscriptionName, durable, handler);
         }
 
         private Dictionary<string, object> GetDictonaryFromMap(Map map)
@@ -187,11 +189,6 @@ namespace BrokerFacade.ActiveMQ
                 headers.Add(entry.Key.ToString(), entry.Value);
             }
             return headers;
-        }
-
-        public override Subscription Subscribe(string topic, string subscriptionName, bool durable, IMessageEventHandler handler)
-        {
-            return SubscribeInternal(topic, subscriptionName, handler, durable);
         }
 
         public override void Unsubscribe(Subscription subscription)

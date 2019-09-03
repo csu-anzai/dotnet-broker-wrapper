@@ -1,0 +1,134 @@
+---
+kind: pipeline
+name: default
+
+platform:
+  os: linux
+  arch: amd64
+
+clone:
+  disable: true
+
+steps:
+- name: fetch_source_code
+  pull: default
+  image: plugins/git
+  settings:
+    depth: 1
+
+- name: prepare_build_tags
+  pull: default
+  image: registry.see.asseco.com/tools/image-tagger
+  environment:
+    GITHUB_TOKEN:
+      from_secret: GITHUB_TOKEN
+
+- name: build_broker_facade
+  pull: default
+  image: microsoft/aspnetcore-build
+  commands:
+  - cd BrokerFacade
+  - dotnet build
+  - dotnet pack --configuration Release /p:PackageVersion=$(head -n 1 ../.version)
+  - cd bin/Release
+  - dotnet nuget push *.nupkg -s http://packages.asseco.rs:30888/repository/nuget -k $NUGET_KEY
+  environment:
+    NUGET_KEY:
+      from_secret: NUGET_KEY
+
+- name: build_broker_facade_active_mq
+  pull: default
+  image: microsoft/aspnetcore-build
+  commands:
+  - cd BrokerFacade.ActiveMQ
+  - dotnet build
+  - dotnet pack --configuration Release /p:PackageVersion=$(head -n 1 ../.version)
+  - cd bin/Release
+  - dotnet nuget push *.nupkg -s http://packages.asseco.rs:30888/repository/nuget -k $NUGET_KEY
+  environment:
+    NUGET_KEY:
+      from_secret: NUGET_KEY
+
+- name: build_broker_facade_nats
+  pull: default
+  image: microsoft/aspnetcore-build
+  commands:
+  - cd BrokerFacade.NATS
+  - dotnet build
+  - dotnet pack --configuration Release /p:PackageVersion=$(head -n 1 ../.version)
+  - cd bin/Release
+  - dotnet nuget push *.nupkg -s http://packages.asseco.rs:30888/repository/nuget -k $NUGET_KEY
+  environment:
+    NUGET_KEY:
+      from_secret: NUGET_KEY
+
+- name: build_broker_facade_rabbit_mq
+  pull: default
+  image: microsoft/aspnetcore-build
+  commands:
+  - cd BrokerFacade.RabbitMQ
+  - dotnet build
+  - dotnet pack --configuration Release /p:PackageVersion=$(head -n 1 ../.version)
+  - cd bin/Release
+  - dotnet nuget push *.nupkg -s http://packages.asseco.rs:30888/repository/nuget -k $NUGET_KEY
+  environment:
+    NUGET_KEY:
+      from_secret: NUGET_KEY
+
+- name: tag_latest_broker_facade
+  pull: default
+  image: microsoft/aspnetcore-build
+  commands:
+  - cd BrokerFacade
+  - dotnet restore
+  - dotnet setversion $(head -n 1 ../.version)
+  when:
+    event:
+    - tag
+
+- name: tag_latest_broker_facade_active_mq
+  pull: default
+  image: microsoft/aspnetcore-build
+  commands:
+  - cd BrokerFacade.ActiveMQ
+  - dotnet setversion $(head -n 1 ../.version)
+  when:
+    event:
+    - tag
+
+- name: tag_latest_broker_facade_nats
+  pull: default
+  image: microsoft/aspnetcore-build
+  commands:
+  - cd BrokerFacade.NATS
+  - dotnet setversion $(head -n 1 ../.version)
+  when:
+    event:
+    - tag
+
+- name: tag_latest_broker_facade_rabbit_mq
+  pull: default
+  image: microsoft/aspnetcore-build
+  commands:
+  - cd BrokerFacade.RabbitMQ
+  - dotnet setversion $(head -n 1 ../.version)
+  when:
+    event:
+    - tag
+
+- name: slack_notify
+  pull: default
+  image: plugins/slack
+  settings:
+    channel: drone
+    template: "{{#success build.status}}\n  Repo {{repo.name}} build {{build.number}} succeeded. Good job {{build.author}}!\n{{else}}\n  Repo {{repo.name}} build {{build.number}} failed. <@{{build.author}}> fix me please!\n{{/success}}\n"
+    username: drone
+  environment:
+    SLACK_WEBHOOK:
+      from_secret: slack_webhook
+  when:
+    status:
+    - failure
+
+image_pull_secrets:
+- dockerconfigjson
